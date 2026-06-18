@@ -99,7 +99,7 @@ services:
   # ── Bankiko API ─────────────────────────────────────────────────────────────
   bankiko-api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: bankiko-api
     depends_on:
@@ -136,6 +136,23 @@ services:
       AT_SENDER_ID: ${AT_SENDER_ID:-BANKIKO}
     ports:
       - "8080:8080"
+    networks:
+      - bankiko-net
+
+  # ── Next.js Frontend ────────────────────────────────────────────────────────
+  bankiko-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bankiko-web
+    depends_on:
+      - bankiko-api
+    environment:
+      NEXT_PUBLIC_API_URL: http://bankiko-api:8080
+      NEXTAUTH_SECRET: ${JWT_SECRET:-change-this-in-production}
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
     networks:
       - bankiko-net
 

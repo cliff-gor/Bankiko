@@ -1,48 +1,49 @@
-# Build output
-target/
-*.jar
-*.class
+# ── Backend (Java / Maven) ───────────────────────────────────────────────────
+backend/target/
+backend/*.jar
+backend/*.class
+backend/.mvn/wrapper/maven-wrapper.jar
 
-# Local secrets — NEVER commit
+# ── Frontend (Next.js) ───────────────────────────────────────────────────────
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.production
+
+# ── Mobile (Expo / React Native) ────────────────────────────────────────────
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/android/
+mobile/ios/
+mobile/.env.local
+
+# ── Secrets — NEVER commit ───────────────────────────────────────────────────
 .env
 *.env
 application-local.yml
 application-local.properties
 
-# macOS
+# ── macOS ────────────────────────────────────────────────────────────────────
 .DS_Store
 .AppleDouble
 
-# IntelliJ IDEA
+# ── IDEs ─────────────────────────────────────────────────────────────────────
 .idea/
 *.iml
 *.iws
-*.ipr
-out/
-
-# VS Code
 .vscode/
-
-# Eclipse
 .eclipse/
-.classpath
-.project
-.settings/
 
-# Maven wrapper JAR (binary — not needed if using system Maven)
-.mvn/wrapper/maven-wrapper.jar
-
-# Logs
+# ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 logs/
 
-# Docker override files with local secrets
+# ── Docker overrides ─────────────────────────────────────────────────────────
 docker-compose.override.yml
 
-# Test reports
-surefire-reports/
-
-# Any generated keys or certificates
+# ── Keys and certificates ────────────────────────────────────────────────────
 *.pem
 *.key
 *.p12

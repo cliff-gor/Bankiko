@@ -1,6 +1,17 @@
 # Bankiko — SACCO Wallet Platform
 
-A production-grade SACCO/Chama wallet backend built with Spring Boot 3 and Apache Fineract. Members can deposit via M-Pesa, contribute to shared group pools, and apply for loans from the group lending fund — all backed by a real core banking engine.
+A full-stack monorepo for running a SACCO / Chama wallet. Members save, contribute to group pools, and borrow from those pools. Every money movement goes through **Apache Fineract** (core banking) and **M-Pesa Daraja** (mobile money).
+
+## Monorepo structure
+
+```
+Bankiko/
+├── backend/          Spring Boot 3.3.4 API (Java 17)
+├── frontend/         Next.js 14 web app (shadcn/ui)
+├── mobile/           React Native Expo app (Expo 51)
+├── docker-compose.yml
+└── package.json      root scripts
+```
 
 ---
 
@@ -506,3 +517,64 @@ The Daraja OAuth token is valid for 60 minutes. Fetching it on every API call ad
 
 **Why Africa's Talking SMS is `@Async`?**
 SMS delivery must never block or fail a financial transaction. If the AT API is down, the transaction still commits — the SMS is a notification, not a confirmation.
+
+---
+
+## Frontend (Next.js)
+
+Located in `frontend/`. Built with Next.js 14 App Router, NextAuth, and shadcn/ui.
+
+### Key decisions
+- **NextAuth CredentialsProvider** — the Spring Boot JWT is stored server-side in the NextAuth session. The browser never sees the raw token (no localStorage risk).
+- **Server components** fetch data directly on the server; client components handle forms and mutations.
+- **API proxy** — `next.config.ts` rewrites `/api/bankiko/*` to the backend, so the browser only talks to the Next.js origin.
+
+### Run locally
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:3000
+```
+
+### Pages
+| Route | Description |
+|---|---|
+| `/login` | Sign in |
+| `/register` | Create account |
+| `/dashboard` | Overview + onboarding banner |
+| `/wallet` | Balance + deposit/withdraw |
+| `/groups` | Group list + create group |
+| `/loans` | Loan list + apply |
+
+---
+
+## Mobile (React Native Expo)
+
+Located in `mobile/`. Built with Expo 51, expo-router, and expo-secure-store.
+
+### Key decisions
+- **expo-secure-store** — tokens stored in the device keychain/keystore, not AsyncStorage.
+- **expo-router** — file-based navigation matching the Next.js mental model.
+- Token refresh and logout are handled in `mobile/lib/storage.ts`.
+
+### Run locally
+```bash
+cd mobile
+npm install
+npx expo start   # scan QR with Expo Go app
+```
+
+For a production build:
+```bash
+npx expo build:android   # or :ios
+```
+
+### Screens
+| Route | Description |
+|---|---|
+| `/(auth)/login` | Sign in |
+| `/(auth)/register` | Create account |
+| `/(tabs)/` | Dashboard |
+| `/(tabs)/wallet` | Wallet balance + deposit/withdraw |
+| `/(tabs)/groups` | Groups + create group |
+| `/(tabs)/loans` | Loans + apply |

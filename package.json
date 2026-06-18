@@ -1,0 +1,12 @@
+{
+  "name": "bankiko",
+  "private": true,
+  "scripts": {
+    "dev:web": "cd frontend && npm run dev",
+    "dev:mobile": "cd mobile && npx expo start",
+    "build:web": "cd frontend && npm run build",
+    "install:all": "cd frontend && npm install && cd ../mobile && npm install",
+    "lint:web": "cd frontend && npm run lint",
+    "lint:mobile": "cd mobile && npm run lint"
+  }
+}
