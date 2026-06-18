@@ -1,0 +1,50 @@
+# Build output
+target/
+*.jar
+*.class
+
+# Local secrets — NEVER commit
+.env
+*.env
+application-local.yml
+application-local.properties
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Eclipse
+.eclipse/
+.classpath
+.project
+.settings/
+
+# Maven wrapper JAR (binary — not needed if using system Maven)
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
+logs/
+
+# Docker override files with local secrets
+docker-compose.override.yml
+
+# Test reports
+surefire-reports/
+
+# Any generated keys or certificates
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore

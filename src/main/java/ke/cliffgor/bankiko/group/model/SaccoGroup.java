@@ -1,0 +1,60 @@
+package ke.cliffgor.bankiko.group.model;
+
+import jakarta.persistence.*;
+import ke.cliffgor.bankiko.member.model.Member;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "sacco_groups")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SaccoGroup {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String name;
+
+    private String description;
+
+    // Fineract savings account ID for the group pool
+    private Long fineractGroupAccountId;
+
+    // Monthly contribution target per member
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal monthlyContributionTarget = BigDecimal.ZERO;
+
+    // Day of month contributions are due (1-28)
+    @Builder.Default
+    private int contributionDueDay = 5;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private GroupStatus status = GroupStatus.ACTIVE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    private Member createdBy;
+
+    @Builder.Default
+    private Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<GroupMember> members = new ArrayList<>();
+
+    public enum GroupStatus {
+        ACTIVE, SUSPENDED, CLOSED
+    }
+}

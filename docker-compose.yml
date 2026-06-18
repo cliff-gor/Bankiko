@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+
+  # ── Our app's database (PostgreSQL) ────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: bankiko-postgres
+    environment:
+      POSTGRES_DB: bankiko
+      POSTGRES_USER: bankiko
+      POSTGRES_PASSWORD: bankiko_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bankiko -d bankiko"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bankiko-net
+
+  # ── Fineract's database (MySQL) ─────────────────────────────────────────────
+  fineract-mysql:
+    image: mysql:8.0
+    container_name: fineract-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql_root_pass
+      MYSQL_DATABASE: fineract_default
+      MYSQL_USER: fineract
+      MYSQL_PASSWORD: fineract_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - fineract_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fineract", "-pfineract_pass"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - bankiko-net
+
+  # ── Apache Fineract ─────────────────────────────────────────────────────────
+  fineract:
+    image: apache/fineract:1.9.0
+    container_name: bankiko-fineract
+    depends_on:
+      fineract-mysql:
+        condition: service_healthy
+    environment:
+      FINERACT_NODE_ID: 1
+      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: com.mysql.cj.jdbc.MysqlDataSource
+      FINERACT_HIKARI_JDBC_URL: jdbc:mysql://fineract-mysql:3306/fineract_default?useSSL=false&serverTimezone=UTC&useLegacyDatetimeCode=false&createDatabaseIfNotExist=true
+      FINERACT_HIKARI_USERNAME: fineract
+      FINERACT_HIKARI_PASSWORD: fineract_pass
+      FINERACT_HIKARI_DS_PROPERTIES_SERVER_NAME: fineract-mysql
+      FINERACT_HIKARI_DS_PROPERTIES_PORT_NUMBER: '3306'
+      FINERACT_HIKARI_DS_PROPERTIES_DATABASE_NAME: fineract_default
+      FINERACT_DEFAULT_TENANTDB_HOSTNAME: fineract-mysql
+      FINERACT_DEFAULT_TENANTDB_PORT: '3306'
+      FINERACT_DEFAULT_TENANTDB_UID: fineract
+      FINERACT_DEFAULT_TENANTDB_PWD: fineract_pass
+      FINERACT_DEFAULT_TENANTDB_CONN_PARAMS: ''
+      FINERACT_SERVER_SSL_ENABLED: 'false'
+      FINERACT_SERVER_PORT: '8080'
+    ports:
+      - "8443:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/fineract-provider/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 120s
+    networks:
+      - bankiko-net
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: bankiko-redis
+    command: redis-server --requirepass redis_secret
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bankiko-net
+
+  # ── Bankiko API ─────────────────────────────────────────────────────────────
+  bankiko-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bankiko-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fineract:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/bankiko
+      DB_USERNAME: bankiko
+      DB_PASSWORD: bankiko_secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_secret
+      FINERACT_BASE_URL: http://fineract:8080/fineract-provider/api/v1
+      FINERACT_TENANT: default
+      FINERACT_USERNAME: mifos
+      FINERACT_PASSWORD: password
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production-to-a-256-bit-secret-key-bankiko}
+      JWT_ACCESS_EXPIRY_MINUTES: 15
+      JWT_REFRESH_EXPIRY_DAYS: 7
+      MPESA_CONSUMER_KEY: ${MPESA_CONSUMER_KEY}
+      MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET}
+      MPESA_SHORTCODE: ${MPESA_SHORTCODE}
+      MPESA_PASSKEY: ${MPESA_PASSKEY}
+      MPESA_CALLBACK_URL: ${MPESA_CALLBACK_URL}
+      MPESA_B2C_INITIATOR_NAME: ${MPESA_B2C_INITIATOR_NAME}
+      MPESA_B2C_SECURITY_CREDENTIAL: ${MPESA_B2C_SECURITY_CREDENTIAL}
+      AT_API_KEY: ${AT_API_KEY}
+      AT_USERNAME: ${AT_USERNAME}
+      AT_SENDER_ID: ${AT_SENDER_ID:-BANKIKO}
+    ports:
+      - "8080:8080"
+    networks:
+      - bankiko-net
+
+volumes:
+  postgres_data:
+  fineract_mysql_data:
+  redis_data:
+
+networks:
+  bankiko-net:
+    driver: bridge
