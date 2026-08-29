@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import ke.cliffgor.bankiko.auth.model.User;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -37,6 +38,11 @@ public class Member {
     private Instant createdAt = Instant.now();
 
     private Instant onboardedAt;
+
+    // Local balance used when Fineract is unavailable (dev/simulation mode)
+    @Builder.Default
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal localBalance = BigDecimal.ZERO;
 
     public enum MemberStatus {
         PENDING_ONBOARDING, ACTIVE, SUSPENDED

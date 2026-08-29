@@ -1,0 +1,1 @@
+ALTER TABLE members ADD COLUMN local_balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00;

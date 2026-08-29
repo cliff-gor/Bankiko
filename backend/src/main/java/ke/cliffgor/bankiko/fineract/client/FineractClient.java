@@ -2,7 +2,6 @@ package ke.cliffgor.bankiko.fineract.client;
 
 import ke.cliffgor.bankiko.common.exception.FineractException;
 import ke.cliffgor.bankiko.fineract.dto.*;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -16,21 +15,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * All Fineract API calls go through here. No other class should hold a reference
- * to the fineractWebClient bean — this is the single integration point.
- */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class FineractClient {
 
     private static final String DATE_FORMAT = "dd MMMM yyyy";
     private static final String LOCALE = "en";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd MMMM yyyy");
 
-    @Qualifier("fineractWebClient")
     private final WebClient webClient;
+
+    public FineractClient(@Qualifier("fineractWebClient") WebClient webClient) {
+        this.webClient = webClient;
+    }
 
     // ── Client (member) management ────────────────────────────────────────────
 

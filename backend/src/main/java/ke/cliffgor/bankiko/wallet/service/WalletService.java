@@ -6,6 +6,7 @@ import ke.cliffgor.bankiko.contribution.service.ContributionService;
 import ke.cliffgor.bankiko.fineract.client.FineractClient;
 import ke.cliffgor.bankiko.fineract.dto.FineractResponse;
 import ke.cliffgor.bankiko.member.model.Member;
+import ke.cliffgor.bankiko.member.repository.MemberRepository;
 import ke.cliffgor.bankiko.member.service.MemberService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.service.B2CService;
@@ -26,6 +27,7 @@ import java.math.BigDecimal;
 public class WalletService {
 
     private final MemberService memberService;
+    private final MemberRepository memberRepository;
     private final FineractClient fineractClient;
     private final StkPushService stkPushService;
     private final B2CService b2cService;
@@ -38,14 +40,33 @@ public class WalletService {
     @Transactional(readOnly = true)
     public WalletBalanceResponse getBalance(User user) {
         Member member = memberService.requireActiveByUserId(user.getId());
-        FineractResponse balance = fineractClient.getBalance(member.getFineractSavingsAccountId());
 
-        return WalletBalanceResponse.builder()
-            .fineractSavingsAccountId(member.getFineractSavingsAccountId())
-            .accountNo(balance.getAccountNo())
-            .availableBalance(balance.getAvailableBalance())
-            .accountBalance(balance.getAccountBalance())
-            .build();
+        if (member.getFineractSavingsAccountId() == null) {
+            return WalletBalanceResponse.builder()
+                .fineractSavingsAccountId(null)
+                .accountNo(null)
+                .availableBalance(member.getLocalBalance())
+                .accountBalance(member.getLocalBalance())
+                .build();
+        }
+
+        try {
+            FineractResponse balance = fineractClient.getBalance(member.getFineractSavingsAccountId());
+            return WalletBalanceResponse.builder()
+                .fineractSavingsAccountId(member.getFineractSavingsAccountId())
+                .accountNo(balance.getAccountNo())
+                .availableBalance(balance.getAvailableBalance())
+                .accountBalance(balance.getAccountBalance())
+                .build();
+        } catch (Exception e) {
+            log.warn("Fineract unavailable for balance check, returning zero: {}", e.getMessage());
+            return WalletBalanceResponse.builder()
+                .fineractSavingsAccountId(member.getFineractSavingsAccountId())
+                .accountNo(null)
+                .availableBalance(BigDecimal.ZERO)
+                .accountBalance(BigDecimal.ZERO)
+                .build();
+        }
     }
 
     /**
@@ -69,11 +90,24 @@ public class WalletService {
         Member member = memberService.requireActiveByUserId(tx.getUser().getId());
 
         if (tx.getType() == MpesaTransaction.TransactionType.DEPOSIT) {
-            fineractClient.deposit(
-                member.getFineractSavingsAccountId(),
-                tx.getAmount(),
-                tx.getMpesaReceiptNumber()
-            );
+            if (member.getFineractSavingsAccountId() != null) {
+                try {
+                    fineractClient.deposit(
+                        member.getFineractSavingsAccountId(),
+                        tx.getAmount(),
+                        tx.getMpesaReceiptNumber()
+                    );
+                } catch (Exception e) {
+                    log.warn("Fineract deposit failed, crediting local balance instead: {}", e.getMessage());
+                    member.setLocalBalance(member.getLocalBalance().add(tx.getAmount()));
+                    memberRepository.save(member);
+                }
+            } else {
+                member.setLocalBalance(member.getLocalBalance().add(tx.getAmount()));
+                memberRepository.save(member);
+                log.info("Local balance credited (Fineract absent): userId={} amount={} newBalance={}",
+                    tx.getUser().getId(), tx.getAmount(), member.getLocalBalance());
+            }
             smsService.send(tx.getPhone(),
                 "Bankiko: KES " + tx.getAmount() + " deposited to your wallet. Receipt: " + tx.getMpesaReceiptNumber());
             log.info("Wallet credited: userId={} amount={}", tx.getUser().getId(), tx.getAmount());

@@ -45,8 +45,11 @@ public class GroupController {
 
     @Operation(summary = "Get group details")
     @GetMapping("/{groupId}")
-    public ResponseEntity<GroupResponse> get(@PathVariable UUID groupId) {
-        return ResponseEntity.ok(groupService.get(groupId));
+    public ResponseEntity<GroupResponse> get(
+        @PathVariable UUID groupId,
+        @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(groupService.get(groupId, user.getId()));
     }
 
     @Operation(summary = "Add a member to the group (admin only)")

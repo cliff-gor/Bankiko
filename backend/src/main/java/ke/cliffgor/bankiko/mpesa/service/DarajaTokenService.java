@@ -1,14 +1,17 @@
 package ke.cliffgor.bankiko.mpesa.service;
 
 import ke.cliffgor.bankiko.common.config.BankikoProperties;
+import ke.cliffgor.bankiko.common.exception.BankikoException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.Base64;
 import java.util.Map;
@@ -29,19 +32,34 @@ public class DarajaTokenService {
     @Cacheable("mpesa-token")
     public String getAccessToken() {
         BankikoProperties.Mpesa cfg = properties.getMpesa();
+
+        if (cfg.getConsumerKey() == null || cfg.getConsumerKey().isBlank()) {
+            throw new BankikoException(
+                "M-Pesa credentials not configured. Set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET.",
+                HttpStatus.SERVICE_UNAVAILABLE
+            );
+        }
+
         String credentials = Base64.getEncoder().encodeToString(
             (cfg.getConsumerKey() + ":" + cfg.getConsumerSecret()).getBytes()
         );
 
-        Map<?, ?> response = mpesaWebClient.get()
-            .uri("/oauth/v1/generate?grant_type=client_credentials")
-            .header("Authorization", "Basic " + credentials)
-            .retrieve()
-            .bodyToMono(Map.class)
-            .doOnError(e -> log.error("Daraja token fetch failed", e))
-            .block();
+        try {
+            Map<?, ?> response = mpesaWebClient.get()
+                .uri("/oauth/v1/generate?grant_type=client_credentials")
+                .header("Authorization", "Basic " + credentials)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
 
-        return response != null ? (String) response.get("access_token") : null;
+            return response != null ? (String) response.get("access_token") : null;
+        } catch (WebClientResponseException e) {
+            log.error("Daraja token fetch failed: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BankikoException("M-Pesa service unavailable: " + e.getStatusCode(), HttpStatus.BAD_GATEWAY);
+        } catch (Exception e) {
+            log.error("Daraja token fetch failed", e);
+            throw new BankikoException("M-Pesa service unreachable", HttpStatus.BAD_GATEWAY);
+        }
     }
 
     // Evict every 58 minutes so the next call re-fetches before the 60-minute Daraja TTL

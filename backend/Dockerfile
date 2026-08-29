@@ -1,20 +1,18 @@
-FROM eclipse-temurin:17-jdk AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy Maven wrapper and pom first — dependency layer is cached unless pom.xml changes
-COPY .mvn .mvn
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline -q
+# Dependency layer — cached unless pom.xml changes
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
 
 COPY src ./src
-RUN ./mvnw package -DskipTests -q
+RUN mvn package -DskipTests -q
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
-# Run as non-root
 USER 1000
 
 EXPOSE 8080

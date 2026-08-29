@@ -17,5 +17,6 @@ public class GroupResponse {
     private Long fineractGroupAccountId;
     private String status;
     private int memberCount;
+    private String role;
     private Instant createdAt;
 }

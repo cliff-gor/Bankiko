@@ -20,7 +20,7 @@ import { storage } from "@/lib/storage";
 const schema = z.object({
   fullName: z.string().min(2, "Full name required"),
   email: z.string().email("Invalid email"),
-  phoneNumber: z.string().min(10, "Enter a valid phone number"),
+  phone: z.string().min(10, "Enter a valid phone number"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -47,7 +47,7 @@ export default function RegisterScreen() {
   const fields: { name: keyof FormData; label: string; placeholder: string; keyboard?: any; secure?: boolean }[] = [
     { name: "fullName", label: "Full name", placeholder: "Jane Doe" },
     { name: "email", label: "Email", placeholder: "you@example.com", keyboard: "email-address" },
-    { name: "phoneNumber", label: "Phone number", placeholder: "0712345678", keyboard: "phone-pad" },
+    { name: "phone", label: "Phone number", placeholder: "0712345678", keyboard: "phone-pad" },
     { name: "password", label: "Password", placeholder: "••••••••", secure: true },
   ];
 

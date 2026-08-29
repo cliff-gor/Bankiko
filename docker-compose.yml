@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   # ── Our app's database (PostgreSQL) ────────────────────────────────────────
@@ -22,47 +20,43 @@ services:
     networks:
       - bankiko-net
 
-  # ── Fineract's database (MySQL) ─────────────────────────────────────────────
-  fineract-mysql:
-    image: mysql:8.0
-    container_name: fineract-mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # ── Fineract's database (PostgreSQL) ───────────────────────────────────────
+  fineract-postgres:
+    image: postgres:16-alpine
+    container_name: fineract-postgres
     environment:
-      MYSQL_ROOT_PASSWORD: mysql_root_pass
-      MYSQL_DATABASE: fineract_default
-      MYSQL_USER: fineract
-      MYSQL_PASSWORD: fineract_pass
-    ports:
-      - "3306:3306"
+      POSTGRES_DB: fineract_default
+      POSTGRES_USER: fineract
+      POSTGRES_PASSWORD: fineract_pass
     volumes:
-      - fineract_mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - fineract_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fineract", "-pfineract_pass"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U fineract -d fineract_default"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - bankiko-net
 
   # ── Apache Fineract ─────────────────────────────────────────────────────────
   fineract:
-    image: apache/fineract:1.9.0
+    image: apache/fineract:develop
     container_name: bankiko-fineract
     depends_on:
-      fineract-mysql:
+      fineract-postgres:
         condition: service_healthy
     environment:
       FINERACT_NODE_ID: 1
-      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: com.mysql.cj.jdbc.MysqlDataSource
-      FINERACT_HIKARI_JDBC_URL: jdbc:mysql://fineract-mysql:3306/fineract_default?useSSL=false&serverTimezone=UTC&useLegacyDatetimeCode=false&createDatabaseIfNotExist=true
+      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.postgresql.Driver
+      FINERACT_HIKARI_JDBC_URL: jdbc:postgresql://fineract-postgres:5432/fineract_default
       FINERACT_HIKARI_USERNAME: fineract
       FINERACT_HIKARI_PASSWORD: fineract_pass
-      FINERACT_HIKARI_DS_PROPERTIES_SERVER_NAME: fineract-mysql
-      FINERACT_HIKARI_DS_PROPERTIES_PORT_NUMBER: '3306'
+      FINERACT_HIKARI_DS_PROPERTIES_SERVER_NAME: fineract-postgres
+      FINERACT_HIKARI_DS_PROPERTIES_PORT_NUMBER: '5432'
       FINERACT_HIKARI_DS_PROPERTIES_DATABASE_NAME: fineract_default
-      FINERACT_DEFAULT_TENANTDB_HOSTNAME: fineract-mysql
-      FINERACT_DEFAULT_TENANTDB_PORT: '3306'
+      FINERACT_DEFAULT_TENANTDB_HOSTNAME: fineract-postgres
+      FINERACT_DEFAULT_TENANTDB_PORT: '5432'
       FINERACT_DEFAULT_TENANTDB_UID: fineract
       FINERACT_DEFAULT_TENANTDB_PWD: fineract_pass
       FINERACT_DEFAULT_TENANTDB_CONN_PARAMS: ''
@@ -108,7 +102,7 @@ services:
       redis:
         condition: service_healthy
       fineract:
-        condition: service_healthy
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_URL: jdbc:postgresql://postgres:5432/bankiko
@@ -128,7 +122,9 @@ services:
       MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET}
       MPESA_SHORTCODE: ${MPESA_SHORTCODE}
       MPESA_PASSKEY: ${MPESA_PASSKEY}
-      MPESA_CALLBACK_URL: ${MPESA_CALLBACK_URL}
+      MPESA_STK_CALLBACK_URL: ${MPESA_STK_CALLBACK_URL}
+      MPESA_B2C_CALLBACK_URL: ${MPESA_B2C_CALLBACK_URL}
+      MPESA_B2C_TIMEOUT_URL: ${MPESA_B2C_TIMEOUT_URL}
       MPESA_B2C_INITIATOR_NAME: ${MPESA_B2C_INITIATOR_NAME}
       MPESA_B2C_SECURITY_CREDENTIAL: ${MPESA_B2C_SECURITY_CREDENTIAL}
       AT_API_KEY: ${AT_API_KEY}
@@ -158,7 +154,7 @@ services:
 
 volumes:
   postgres_data:
-  fineract_mysql_data:
+  fineract_pg_data:
   redis_data:
 
 networks:

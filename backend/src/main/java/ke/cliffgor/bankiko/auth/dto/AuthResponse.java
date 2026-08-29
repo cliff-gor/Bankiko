@@ -11,5 +11,6 @@ public class AuthResponse {
     private String tokenType;
     private long expiresIn;
     private String userId;
+    private String fullName;
     private String role;
 }

@@ -1,5 +1,6 @@
 package ke.cliffgor.bankiko.mpesa.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import ke.cliffgor.bankiko.auth.model.User;
 import lombok.*;
@@ -31,6 +32,7 @@ public class MpesaTransaction {
     // MpesaReceiptNumber from successful callback — use as Fineract receipt
     private String mpesaReceiptNumber;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private User user;

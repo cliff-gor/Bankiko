@@ -4,11 +4,13 @@ import ke.cliffgor.bankiko.auth.model.User;
 import ke.cliffgor.bankiko.common.config.BankikoProperties;
 import ke.cliffgor.bankiko.common.exception.BankikoException;
 import ke.cliffgor.bankiko.mpesa.dto.StkCallback;
+import ke.cliffgor.bankiko.wallet.service.WalletService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.repository.MpesaTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,19 +23,35 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class StkPushService {
 
-    @Qualifier("mpesaWebClient")
     private final WebClient mpesaWebClient;
     private final BankikoProperties properties;
     private final DarajaTokenService tokenService;
     private final MpesaTransactionRepository transactionRepository;
+    private final WalletService walletService;
+
+    public StkPushService(
+        @Qualifier("mpesaWebClient") WebClient mpesaWebClient,
+        BankikoProperties properties,
+        DarajaTokenService tokenService,
+        MpesaTransactionRepository transactionRepository,
+        @Lazy WalletService walletService
+    ) {
+        this.mpesaWebClient = mpesaWebClient;
+        this.properties = properties;
+        this.tokenService = tokenService;
+        this.transactionRepository = transactionRepository;
+        this.walletService = walletService;
+    }
 
     /**
      * Initiates an STK push to the member's phone for a deposit or contribution.
@@ -95,7 +113,50 @@ public class StkPushService {
 
         transactionRepository.save(tx);
         log.info("STK push initiated: checkoutRequestId={} userId={} amount={}", tx.getCheckoutRequestId(), user.getId(), amount);
+
+        if (properties.getMpesa().isSimulateCallback()) {
+            scheduleSimulatedCallback(tx);
+        }
+
         return tx;
+    }
+
+    private void scheduleSimulatedCallback(MpesaTransaction tx) {
+        String fakeReceipt = "SIM" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+        log.info("[SIM] Scheduling fake STK callback in 5s for checkoutRequestId={} receipt={}", tx.getCheckoutRequestId(), fakeReceipt);
+
+        Executors.newSingleThreadScheduledExecutor().schedule(() -> {
+            try {
+                StkCallback.CallbackMetadata meta = new StkCallback.CallbackMetadata();
+                meta.setItems(List.of(
+                    Map.of("Name", "MpesaReceiptNumber", "Value", fakeReceipt),
+                    Map.of("Name", "Amount", "Value", tx.getAmount()),
+                    Map.of("Name", "PhoneNumber", "Value", tx.getPhone())
+                ));
+
+                StkCallback.StkCallbackData data = new StkCallback.StkCallbackData();
+                data.setMerchantRequestId(tx.getMerchantRequestId());
+                data.setCheckoutRequestId(tx.getCheckoutRequestId());
+                data.setResultCode(0);
+                data.setResultDesc("The service request is processed successfully.");
+                data.setCallbackMetadata(meta);
+
+                StkCallback.Body body = new StkCallback.Body();
+                body.setStkCallback(data);
+
+                StkCallback fakeCallback = new StkCallback();
+                fakeCallback.setBody(body);
+
+                handleCallback(fakeCallback);
+
+                transactionRepository.findByCheckoutRequestId(tx.getCheckoutRequestId())
+                    .ifPresent(walletService::processMpesaPayment);
+
+                log.info("[SIM] Fake STK callback processed: receipt={} amount={}", fakeReceipt, tx.getAmount());
+            } catch (Exception e) {
+                log.error("[SIM] Fake STK callback failed", e);
+            }
+        }, 5, TimeUnit.SECONDS);
     }
 
     @Transactional

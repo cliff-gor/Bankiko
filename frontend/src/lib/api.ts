@@ -1,4 +1,4 @@
-import { AuthResponse, WalletBalance, GroupResponse, ContributionResponse, MpesaTransaction, LoanResponse, MemberResponse, Page } from "@/types";
+import { AuthResponse, WalletBalance, GroupResponse, ContributionResponse, MpesaTransaction, LoanResponse, MemberResponse, UserSummary, Page } from "@/types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth";
 
@@ -134,4 +134,49 @@ export async function applyForLoan(token: string, body: {
     method: "POST",
     body: JSON.stringify(body),
   }, token);
+}
+
+export async function getLoans(token: string) {
+  return request<LoanResponse[]>("/api/loans", {}, token);
+}
+
+export async function getPendingLoans(token: string) {
+  return request<LoanResponse[]>("/api/loans/pending", {}, token);
+}
+
+export async function approveLoan(token: string, loanId: string) {
+  return request<LoanResponse>(`/api/loans/${loanId}/approve`, { method: "POST" }, token);
+}
+
+export async function rejectLoan(token: string, loanId: string) {
+  return request<LoanResponse>(`/api/loans/${loanId}/reject`, { method: "POST" }, token);
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export async function getAdminUsers(token: string, page = 0) {
+  return request<Page<UserSummary>>(`/api/admin/users?page=${page}&size=20`, {}, token);
+}
+
+export async function setUserEnabled(token: string, userId: string, enabled: boolean) {
+  return request<void>(`/api/admin/users/${userId}/${enabled ? "enable" : "disable"}`, { method: "PUT" }, token);
+}
+
+export async function setUserRole(token: string, userId: string, role: string) {
+  return request<void>(`/api/admin/users/${userId}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  }, token);
+}
+
+export async function getAdminGroups(token: string) {
+  return request<{ id: string; name: string; description: string; monthlyContributionTarget: number; status: string; memberCount: number }[]>("/api/admin/groups", {}, token);
+}
+
+export async function adminAddMemberToGroup(token: string, groupId: string, userId: string) {
+  return request<void>(`/api/admin/groups/${groupId}/members/${userId}`, { method: "POST" }, token);
+}
+
+export async function getAdminLoans(token: string) {
+  return request<{ id: string; userId: string; memberName: string; groupName: string; principal: number; repaymentMonths: number; status: string; purpose: string | null; appliedAt: string; disbursedAt: string | null }[]>("/api/admin/loans", {}, token);
 }

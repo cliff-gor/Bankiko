@@ -91,11 +91,13 @@ bankiko:
     consumer-secret: ${MPESA_CONSUMER_SECRET:}
     shortcode: ${MPESA_SHORTCODE:}
     passkey: ${MPESA_PASSKEY:}
-    callback-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/mpesa/callback/stk}
-    b2c-callback-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/mpesa/callback/b2c}
+    callback-url: ${MPESA_STK_CALLBACK_URL:http://localhost:8080/api/mpesa/callback/stk}
+    b2c-callback-url: ${MPESA_B2C_CALLBACK_URL:http://localhost:8080/api/mpesa/callback/b2c}
     b2c-initiator-name: ${MPESA_B2C_INITIATOR_NAME:}
     b2c-security-credential: ${MPESA_B2C_SECURITY_CREDENTIAL:}
-    b2c-queue-timeout-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/mpesa/callback/b2c/timeout}
+    b2c-queue-timeout-url: ${MPESA_B2C_TIMEOUT_URL:http://localhost:8080/api/mpesa/callback/b2c/timeout}
+    # Set to false in production — simulates instant M-Pesa callback for local dev
+    simulate-callback: ${MPESA_SIMULATE_CALLBACK:true}
 
   africa-talking:
     api-key: ${AT_API_KEY:}

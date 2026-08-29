@@ -15,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Loans")
@@ -25,6 +26,12 @@ public class LoanController {
 
     private final LoanService loanService;
 
+    @Operation(summary = "List my loans")
+    @GetMapping
+    public ResponseEntity<List<LoanResponse>> list(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(loanService.listForUser(user.getId()));
+    }
+
     @Operation(summary = "Apply for a loan from the group lending pool")
     @PostMapping
     public ResponseEntity<LoanResponse> apply(
@@ -34,25 +41,41 @@ public class LoanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(loanService.apply(user, request));
     }
 
-    @Operation(summary = "Approve and disburse a loan (group admin only)")
-    @PreAuthorize("hasRole('GROUP_ADMIN') or hasRole('SYSTEM_ADMIN')")
-    @PostMapping("/{fineractLoanId}/disburse")
-    public ResponseEntity<LoanResponse> disburse(
-        @AuthenticationPrincipal User adminUser,
-        @PathVariable Long fineractLoanId,
-        @RequestParam UUID borrowerUserId
+    @Operation(summary = "List all pending loan applications (admin)")
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<List<LoanResponse>> pending() {
+        return ResponseEntity.ok(loanService.listPending());
+    }
+
+    @Operation(summary = "Approve a loan (admin)")
+    @PostMapping("/{loanId}/approve")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<LoanResponse> approve(
+        @PathVariable UUID loanId,
+        @AuthenticationPrincipal User adminUser
     ) {
-        return ResponseEntity.ok(loanService.approveAndDisburse(adminUser, fineractLoanId, borrowerUserId));
+        return ResponseEntity.ok(loanService.approve(loanId, adminUser));
+    }
+
+    @Operation(summary = "Reject a loan (admin)")
+    @PostMapping("/{loanId}/reject")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<LoanResponse> reject(
+        @PathVariable UUID loanId,
+        @AuthenticationPrincipal User adminUser
+    ) {
+        return ResponseEntity.ok(loanService.reject(loanId, adminUser));
     }
 
     @Operation(summary = "Make a loan repayment")
-    @PostMapping("/{fineractLoanId}/repay")
+    @PostMapping("/{loanId}/repay")
     public ResponseEntity<Void> repay(
         @AuthenticationPrincipal User user,
-        @PathVariable Long fineractLoanId,
+        @PathVariable UUID loanId,
         @RequestParam BigDecimal amount
     ) {
-        loanService.repay(user, fineractLoanId, amount);
+        loanService.repay(user, loanId, amount);
         return ResponseEntity.noContent().build();
     }
 }

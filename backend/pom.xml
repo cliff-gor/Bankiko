@@ -23,6 +23,7 @@
         <springdoc.version>2.6.0</springdoc.version>
         <mapstruct.version>1.6.2</mapstruct.version>
         <testcontainers.version>1.20.1</testcontainers.version>
+        <flyway.version>10.20.1</flyway.version>
     </properties>
 
     <dependencies>
@@ -81,10 +82,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway -->
+        <!-- Flyway (10.x required for PostgreSQL 16+) -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- JWT -->

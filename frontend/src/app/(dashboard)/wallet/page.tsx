@@ -14,8 +14,8 @@ export default async function WalletPage() {
 
   try { member = await getMe(token); } catch {}
 
-  if (member?.status === "PENDING_ONBOARDING") {
-    // Auto-trigger onboarding on first wallet visit
+  // Onboard if no member record yet, or if still pending
+  if (!member || member.status === "PENDING_ONBOARDING") {
     try { member = await onboardMe(token); } catch {}
   }
 

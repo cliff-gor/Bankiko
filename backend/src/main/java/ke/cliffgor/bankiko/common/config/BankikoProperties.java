@@ -53,6 +53,7 @@ public class BankikoProperties {
         private String b2cQueueTimeoutUrl;
         private String b2cInitiatorName;
         private String b2cSecurityCredential;
+        private boolean simulateCallback = false;
     }
 
     @Data

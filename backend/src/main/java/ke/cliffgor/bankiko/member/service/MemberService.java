@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -45,25 +46,34 @@ public class MemberService {
             throw new BankikoException("Member already onboarded", HttpStatus.CONFLICT);
         }
 
-        String[] names = splitName(user.getFullName());
-        FineractResponse clientResponse = fineractClient.createClient(
-            names[0], names[1], user.getPhone(), "user-" + userId
-        );
+        Long fineractClientId = null;
+        Long fineractSavingsAccountId = null;
 
-        FineractResponse savingsResponse = fineractClient.openSavingsAccount(
-            clientResponse.getResourceId(), walletProductId, "wallet-" + userId
-        );
+        try {
+            String[] names = splitName(user.getFullName());
+            FineractResponse clientResponse = fineractClient.createClient(
+                names[0], names[1], user.getPhone(), "user-" + userId
+            );
+            FineractResponse savingsResponse = fineractClient.openSavingsAccount(
+                clientResponse.getResourceId(), walletProductId, "wallet-" + userId
+            );
+            fineractClientId = clientResponse.getResourceId();
+            fineractSavingsAccountId = savingsResponse.getResourceId();
+            log.info("Fineract onboarding complete: userId={} clientId={}", userId, fineractClientId);
+        } catch (Exception e) {
+            log.warn("Fineract unavailable during onboarding for userId={} — continuing without it: {}", userId, e.getMessage());
+        }
 
         Member member = Member.builder()
             .user(user)
-            .fineractClientId(clientResponse.getResourceId())
-            .fineractSavingsAccountId(savingsResponse.getResourceId())
+            .fineractClientId(fineractClientId)
+            .fineractSavingsAccountId(fineractSavingsAccountId)
             .status(Member.MemberStatus.ACTIVE)
             .onboardedAt(Instant.now())
             .build();
 
         memberRepository.save(member);
-        log.info("Member onboarded: userId={} fineractClientId={}", userId, clientResponse.getResourceId());
+        log.info("Member onboarded locally: userId={}", userId);
 
         return toResponse(member);
     }
@@ -73,6 +83,10 @@ public class MemberService {
         return memberRepository.findByUserId(userId)
             .map(this::toResponse)
             .orElseThrow(() -> new ResourceNotFoundException("Member", userId));
+    }
+
+    public Optional<Member> findByUserId(UUID userId) {
+        return memberRepository.findByUserId(userId);
     }
 
     public Member requireActiveByUserId(UUID userId) {

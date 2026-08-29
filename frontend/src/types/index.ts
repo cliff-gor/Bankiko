@@ -58,12 +58,15 @@ export interface MpesaTransaction {
 }
 
 export interface LoanResponse {
+  id: string;
   fineractLoanId: number;
   principal: number;
   repaymentMonths: number;
   status: string;
   groupName: string;
+  purpose: string | null;
   appliedAt: string;
+  disbursedAt: string | null;
 }
 
 export interface Page<T> {
@@ -72,6 +75,16 @@ export interface Page<T> {
   totalPages: number;
   size: number;
   number: number;
+}
+
+export interface UserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: string;
+  enabled: boolean;
+  createdAt: string;
 }
 
 export interface ApiError {

@@ -114,6 +114,7 @@ public class AuthService {
             .tokenType("Bearer")
             .expiresIn(properties.getJwt().getAccessExpiryMinutes() * 60L)
             .userId(user.getId().toString())
+            .fullName(user.getFullName())
             .role(user.getRole().name())
             .build();
     }

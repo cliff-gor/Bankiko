@@ -34,7 +34,7 @@ export default function LoginScreen() {
     try {
       const res = await authApi.login(data.email, data.password);
       await storage.saveTokens(res.accessToken, res.refreshToken);
-      await storage.saveUser({ email: res.email, fullName: res.fullName, role: res.role });
+      await storage.saveUser({ email: res.email, fullName: res.fullName, role: res.role, phone: (res as any).phone });
       router.replace("/(tabs)/");
     } catch (err: any) {
       Toast.show({ type: "error", text1: err?.detail ?? "Login failed" });
