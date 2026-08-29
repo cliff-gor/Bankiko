@@ -3,7 +3,7 @@ spring:
     name: bankiko
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/bankiko}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bankiko}
     username: ${DB_USERNAME:bankiko}
     password: ${DB_PASSWORD:bankiko_secret}
     hikari:
