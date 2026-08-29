@@ -97,7 +97,7 @@ bankiko:
     b2c-security-credential: ${MPESA_B2C_SECURITY_CREDENTIAL:}
     b2c-queue-timeout-url: ${MPESA_B2C_TIMEOUT_URL:http://localhost:8080/api/mpesa/callback/b2c/timeout}
     # Set to false in production — simulates instant M-Pesa callback for local dev
-    simulate-callback: ${MPESA_SIMULATE_CALLBACK:true}
+    simulate-callback: false
 
   africa-talking:
     api-key: ${AT_API_KEY:}

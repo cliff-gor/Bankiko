@@ -38,8 +38,6 @@ services:
         value: "7"
       - key: FINERACT_BASE_URL
         value: ""
-      - key: MPESA_SIMULATE_CALLBACK
-        value: "true"
     healthCheckPath: /actuator/health
     autoDeploy: true
 
