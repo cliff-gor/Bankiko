@@ -3,7 +3,7 @@ services:
     name: bankiko-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerContext: ./
     envVars:
       - key: DB_URL
         fromDatabase:

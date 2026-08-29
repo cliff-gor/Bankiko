@@ -2,10 +2,10 @@ FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
 # Dependency layer — cached unless pom.xml changes
-COPY pom.xml ./
+COPY backend/pom.xml ./
 RUN mvn dependency:go-offline -q
 
-COPY src ./src
+COPY backend/src ./src
 RUN mvn package -DskipTests -q
 
 FROM eclipse-temurin:17-jre
