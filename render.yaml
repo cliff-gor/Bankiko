@@ -23,6 +23,17 @@ services:
     healthCheckPath: /actuator/health
     autoDeploy: true
 
+  - type: web
+    name: bankiko-web
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://bankiko.onrender.com"
+    healthCheckPath: /
+    autoDeploy: true
+
   - type: redis
     name: bankiko-redis
     plan: free
