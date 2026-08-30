@@ -28,6 +28,9 @@ services:
     runtime: docker
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
+    dockerBuildArgs:
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://bankiko.onrender.com"
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: "https://bankiko.onrender.com"
