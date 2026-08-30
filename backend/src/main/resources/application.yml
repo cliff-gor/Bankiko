@@ -58,6 +58,9 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
+  health:
+    redis:
+      enabled: false
   metrics:
     export:
       prometheus:

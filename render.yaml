@@ -31,6 +31,10 @@ services:
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: "https://bankiko.onrender.com"
+      - key: NEXTAUTH_URL
+        value: "https://bankiko-web.onrender.com"
+      - key: NEXTAUTH_SECRET
+        generateValue: true
     healthCheckPath: /
     autoDeploy: true
 
