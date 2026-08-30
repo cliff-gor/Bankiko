@@ -6,7 +6,8 @@ import { Users, Calendar, TrendingUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ContributeDialog } from "@/components/groups/ContributeDialog";
 
-export default async function GroupDetailPage({ params }: { params: { id: string } }) {
+export default async function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const token = (session as any)?.accessToken;
 
@@ -14,8 +15,8 @@ export default async function GroupDetailPage({ params }: { params: { id: string
   let contributions = null;
   try {
     [group, contributions] = await Promise.all([
-      getGroup(token, params.id),
-      getGroupContributions(token, params.id),
+      getGroup(token, id),
+      getGroupContributions(token, id),
     ]);
   } catch {}
 
