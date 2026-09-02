@@ -131,7 +131,7 @@ export interface LoanResponse {
 
 export interface MpesaTransactionResponse {
   id: string;
-  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL";
+  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL" | "LOAN_DISBURSEMENT";
   amount: number;
   phone: string;
   status: "PENDING" | "SUCCESS" | "FAILED" | "TIMEOUT";

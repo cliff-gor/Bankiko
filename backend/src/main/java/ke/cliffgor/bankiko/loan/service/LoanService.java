@@ -11,6 +11,8 @@ import ke.cliffgor.bankiko.loan.model.Loan;
 import ke.cliffgor.bankiko.loan.repository.LoanRepository;
 import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.member.service.MemberService;
+import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
+import ke.cliffgor.bankiko.mpesa.repository.MpesaTransactionRepository;
 import ke.cliffgor.bankiko.notification.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class LoanService {
     private final MemberService memberService;
     private final GroupService groupService;
     private final SmsService smsService;
+    private final MpesaTransactionRepository transactionRepository;
 
     @Transactional(readOnly = true)
     public List<LoanResponse> listForUser(UUID userId) {
@@ -100,9 +103,20 @@ public class LoanService {
         loan.setDisbursedAt(Instant.now());
         loan = loanRepository.save(loan);
 
+        // Record disbursement in transaction history so it shows in member's wallet
+        transactionRepository.save(MpesaTransaction.builder()
+            .user(loan.getUser())
+            .amount(loan.getPrincipal())
+            .phone(loan.getUser().getPhone())
+            .type(MpesaTransaction.TransactionType.LOAN_DISBURSEMENT)
+            .status(MpesaTransaction.TransactionStatus.SUCCESS)
+            .mpesaReceiptNumber("LOAN-" + loanId.toString().substring(0, 8).toUpperCase())
+            .completedAt(Instant.now())
+            .build());
+
         try {
             smsService.send(loan.getUser().getPhone(),
-                "Bankiko: Your loan of KES " + loan.getPrincipal() + " has been approved.");
+                "Bankiko: Your loan of KES " + loan.getPrincipal() + " has been approved and disbursed.");
         } catch (Exception ignored) {}
 
         log.info("Loan approved: loanId={} by adminId={}", loanId, adminUser.getId());

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Contacts from "expo-contacts";
 import Toast from "react-native-toast-message";
 import { groupApi, walletApi, GroupResponse } from "@/lib/api";
 import { storage } from "@/lib/storage";
@@ -51,6 +52,31 @@ export default function GroupDetailScreen() {
       if (u?.phone) setPhone(u.phone);
     });
   }, []);
+
+  async function handlePickContact() {
+    const { status } = await Contacts.requestPermissionsAsync();
+    if (status !== "granted") {
+      Toast.show({ type: "error", text1: "Contacts permission denied" });
+      return;
+    }
+    const { data } = await Contacts.getContactsAsync({
+      fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
+    });
+    if (!data.length) {
+      Toast.show({ type: "info", text1: "No contacts found" });
+      return;
+    }
+    // Present a simple picker — use the system contact picker via presentContactPickerAsync
+    try {
+      const contact = await Contacts.presentContactPickerAsync();
+      if (!contact) return;
+      const phone = contact.phoneNumbers?.[0]?.number?.replace(/\s|-/g, "");
+      const email = contact.emails?.[0]?.email;
+      setInviteQuery(phone ?? email ?? "");
+    } catch {
+      Toast.show({ type: "error", text1: "Could not open contacts" });
+    }
+  }
 
   async function handleLookup() {
     if (!inviteQuery.trim()) return;
@@ -187,7 +213,7 @@ export default function GroupDetailScreen() {
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Invite to {group.name}</Text>
             <Text style={styles.label}>Phone number or email</Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
                 placeholder="0712345678 or user@email.com"
@@ -204,6 +230,13 @@ export default function GroupDetailScreen() {
                 {lookingUp ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.submitBtnText}>Find</Text>}
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14, alignSelf: "flex-start" }}
+              onPress={handlePickContact}
+            >
+              <Ionicons name="people-circle-outline" size={18} color="#1d4ed8" />
+              <Text style={{ fontSize: 13, color: "#1d4ed8", fontWeight: "500" }}>Pick from contacts</Text>
+            </TouchableOpacity>
             {foundUser && (
               <View style={{ backgroundColor: "#f0fdf4", borderRadius: 10, padding: 14, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#16a34a", justifyContent: "center", alignItems: "center" }}>

@@ -51,7 +51,7 @@ export interface MpesaTransaction {
   id: string;
   amount: number;
   phone: string;
-  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL";
+  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL" | "LOAN_DISBURSEMENT";
   status: "PENDING" | "SUCCESS" | "FAILED" | "TIMEOUT";
   mpesaReceiptNumber: string;
   createdAt: string;

@@ -21,6 +21,12 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-contacts",
+        {
+          "contactsPermission": "Bankiko needs access to your contacts to invite members to groups."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#16a34a",

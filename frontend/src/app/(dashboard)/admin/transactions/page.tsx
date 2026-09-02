@@ -12,9 +12,10 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  DEPOSIT:      "Deposit",
-  WITHDRAWAL:   "Withdrawal",
-  CONTRIBUTION: "Contribution",
+  DEPOSIT:           "Deposit",
+  WITHDRAWAL:        "Withdrawal",
+  CONTRIBUTION:      "Contribution",
+  LOAN_DISBURSEMENT: "Loan Disbursement",
 };
 
 export default async function AdminTransactionsPage() {

@@ -28,13 +28,16 @@ export default function LoginPage() {
   async function onSubmit(data: FormData) {
     setLoading(true);
     const result = await signIn("credentials", { ...data, redirect: false });
-    setLoading(false);
 
     if (result?.error) {
+      setLoading(false);
       toast.error("Invalid email or password");
     } else {
-      router.push("/dashboard");
+      // refresh() re-fetches server components with the new session cookie,
+      // then push() navigates so the dashboard loads with fresh session data.
       router.refresh();
+      await new Promise((r) => setTimeout(r, 300));
+      router.push("/dashboard");
     }
   }
 
