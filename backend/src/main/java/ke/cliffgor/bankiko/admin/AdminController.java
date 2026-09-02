@@ -12,6 +12,8 @@ import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.loan.model.Loan;
 import ke.cliffgor.bankiko.loan.repository.LoanRepository;
 import ke.cliffgor.bankiko.member.repository.MemberRepository;
+import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
+import ke.cliffgor.bankiko.mpesa.repository.MpesaTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +38,7 @@ public class AdminController {
     private final GroupMemberRepository groupMemberRepository;
     private final MemberRepository memberRepository;
     private final LoanRepository loanRepository;
+    private final MpesaTransactionRepository transactionRepository;
 
     @GetMapping("/users")
     public ResponseEntity<Page<UserSummary>> listUsers(
@@ -82,6 +85,16 @@ public class AdminController {
             .map(g -> new GroupSummary(g.getId(), g.getName(), g.getDescription(),
                 g.getMonthlyContributionTarget(), g.getStatus().name(), g.getMembers().size()))
             .toList());
+    }
+
+    @GetMapping("/transactions")
+    public ResponseEntity<Page<MpesaTransaction>> listAllTransactions(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "30") int size
+    ) {
+        return ResponseEntity.ok(
+            transactionRepository.findAll(PageRequest.of(page, size, Sort.by("createdAt").descending()))
+        );
     }
 
     @Transactional(readOnly = true)

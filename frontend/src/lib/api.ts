@@ -177,6 +177,10 @@ export async function adminAddMemberToGroup(token: string, groupId: string, user
   return request<void>(`/api/admin/groups/${groupId}/members/${userId}`, { method: "POST" }, token);
 }
 
+export async function getAdminTransactions(token: string, page = 0) {
+  return request<{ content: { id: string; userId: string; type: string; amount: number; status: string; mpesaReceiptNumber: string | null; phone: string; createdAt: string }[]; totalElements: number }>(`/api/admin/transactions?page=${page}&size=30`, {}, token);
+}
+
 export async function getAdminLoans(token: string) {
   return request<{ id: string; userId: string; memberName: string; groupName: string; principal: number; repaymentMonths: number; status: string; purpose: string | null; appliedAt: string; disbursedAt: string | null }[]>("/api/admin/loans", {}, token);
 }

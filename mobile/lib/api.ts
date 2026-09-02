@@ -195,6 +195,10 @@ export const groupApi = {
       method: "POST",
       body: JSON.stringify({ amount, phone, groupId }),
     }),
+  addMember: (groupId: string, targetUserId: string) =>
+    request<void>(`/api/groups/${groupId}/members/${targetUserId}`, { method: "POST" }),
+  lookupUser: (q: string) =>
+    request<{ id: string; fullName: string; phone: string; email: string }>(`/api/groups/users/lookup?q=${encodeURIComponent(q)}`),
 };
 
 export const contributionApi = {

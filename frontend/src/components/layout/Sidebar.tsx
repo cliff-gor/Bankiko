@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LayoutDashboard, Wallet, Users, CreditCard, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Wallet, Users, CreditCard, LogOut, ShieldCheck, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const memberNav = [
@@ -14,10 +14,11 @@ const memberNav = [
 ];
 
 const adminNav = [
-  { href: "/dashboard",     label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/users",   label: "Members",   icon: Users },
-  { href: "/admin/groups",  label: "Groups",    icon: Users },
-  { href: "/admin/loans",   label: "Loans",     icon: CreditCard },
+  { href: "/dashboard",            label: "Dashboard",    icon: LayoutDashboard },
+  { href: "/admin/users",          label: "Members",      icon: Users },
+  { href: "/admin/groups",         label: "Groups",       icon: Users },
+  { href: "/admin/loans",          label: "Loans",        icon: CreditCard },
+  { href: "/admin/transactions",   label: "Transactions", icon: Receipt },
 ];
 
 export function Sidebar() {

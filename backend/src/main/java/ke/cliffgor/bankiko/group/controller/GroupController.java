@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import ke.cliffgor.bankiko.auth.model.User;
+import ke.cliffgor.bankiko.auth.repository.UserRepository;
 import ke.cliffgor.bankiko.group.dto.CreateGroupRequest;
 import ke.cliffgor.bankiko.group.dto.GroupResponse;
 import ke.cliffgor.bankiko.group.service.GroupService;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Tag(name = "Groups")
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class GroupController {
 
     private final GroupService groupService;
+    private final UserRepository userRepository;
 
     @Operation(summary = "Create a new SACCO group")
     @PostMapping
@@ -50,6 +53,16 @@ public class GroupController {
         @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(groupService.get(groupId, user.getId()));
+    }
+
+    @Operation(summary = "Look up a user by phone or email for group invite")
+    @GetMapping("/users/lookup")
+    public ResponseEntity<?> lookupUser(@RequestParam String q) {
+        var user = userRepository.findByPhone(q)
+            .or(() -> userRepository.findByEmail(q))
+            .map(u -> Map.of("id", u.getId(), "fullName", u.getFullName(), "phone", u.getPhone(), "email", u.getEmail()));
+        return user.<ResponseEntity<?>>map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @Operation(summary = "Add a member to the group (admin only)")

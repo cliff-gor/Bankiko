@@ -22,6 +22,11 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [contributeModal, setContributeModal] = useState(false);
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteQuery, setInviteQuery] = useState("");
+  const [foundUser, setFoundUser] = useState<{ id: string; fullName: string; phone: string; email: string } | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +51,37 @@ export default function GroupDetailScreen() {
       if (u?.phone) setPhone(u.phone);
     });
   }, []);
+
+  async function handleLookup() {
+    if (!inviteQuery.trim()) return;
+    setLookingUp(true);
+    setFoundUser(null);
+    try {
+      const user = await groupApi.lookupUser(inviteQuery.trim());
+      setFoundUser(user);
+    } catch {
+      Toast.show({ type: "error", text1: "User not found", text2: "Check the phone or email and try again" });
+    } finally {
+      setLookingUp(false);
+    }
+  }
+
+  async function handleInvite() {
+    if (!foundUser) return;
+    setInviting(true);
+    try {
+      await groupApi.addMember(id, foundUser.id);
+      Toast.show({ type: "success", text1: `${foundUser.fullName} added to group` });
+      setInviteModal(false);
+      setInviteQuery("");
+      setFoundUser(null);
+      load();
+    } catch (err: any) {
+      Toast.show({ type: "error", text1: err?.detail ?? "Failed to add member" });
+    } finally {
+      setInviting(false);
+    }
+  }
 
   async function handleContribute() {
     if (!amount || !phone) {
@@ -113,12 +149,20 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        {/* Contribute CTA */}
+        {/* Action buttons */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.contributeBtn} onPress={() => setContributeModal(true)}>
-            <Ionicons name="arrow-down-circle-outline" size={20} color="#fff" />
-            <Text style={styles.contributeBtnText}>Contribute this month</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity style={[styles.contributeBtn, { flex: 1 }]} onPress={() => setContributeModal(true)}>
+              <Ionicons name="arrow-down-circle-outline" size={20} color="#fff" />
+              <Text style={styles.contributeBtnText}>Contribute</Text>
+            </TouchableOpacity>
+            {group.role === "ADMIN" && (
+              <TouchableOpacity style={[styles.contributeBtn, { flex: 1, backgroundColor: "#1d4ed8" }]} onPress={() => setInviteModal(true)}>
+                <Ionicons name="person-add-outline" size={20} color="#fff" />
+                <Text style={styles.contributeBtnText}>Invite</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Info rows */}
@@ -136,6 +180,54 @@ export default function GroupDetailScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Invite modal */}
+      <Modal visible={inviteModal} animationType="slide" transparent onRequestClose={() => setInviteModal(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Invite to {group.name}</Text>
+            <Text style={styles.label}>Phone number or email</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="0712345678 or user@email.com"
+                value={inviteQuery}
+                onChangeText={setInviteQuery}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TouchableOpacity
+                style={[styles.submitBtn, { flex: 0, paddingHorizontal: 16, marginBottom: 0 }]}
+                onPress={handleLookup}
+                disabled={lookingUp}
+              >
+                {lookingUp ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.submitBtnText}>Find</Text>}
+              </TouchableOpacity>
+            </View>
+            {foundUser && (
+              <View style={{ backgroundColor: "#f0fdf4", borderRadius: 10, padding: 14, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#16a34a", justifyContent: "center", alignItems: "center" }}>
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{foundUser.fullName[0]}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: "600", color: "#111827" }}>{foundUser.fullName}</Text>
+                  <Text style={{ fontSize: 12, color: "#6b7280" }}>{foundUser.phone}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.submitBtn, { flex: 0, paddingHorizontal: 16, paddingVertical: 10 }]}
+                  onPress={handleInvite}
+                  disabled={inviting}
+                >
+                  {inviting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.submitBtnText}>Add</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setInviteModal(false); setInviteQuery(""); setFoundUser(null); }}>
+              <Text style={styles.cancelBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Contribute modal */}
       <Modal visible={contributeModal} animationType="slide" transparent>
