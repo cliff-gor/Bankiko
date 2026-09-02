@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { getAdminLoans } from "@/lib/api";
 import { formatKES } from "@/lib/utils";
 import { CreditCard } from "lucide-react";
+import { AdminLoanActions } from "@/components/loans/AdminLoanActions";
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING_APPROVAL: "bg-amber-100 text-amber-700",
@@ -45,12 +46,13 @@ export default async function AdminLoansPage() {
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Months</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Applied</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loans.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-muted-foreground">
+                <td colSpan={7} className="text-center py-12 text-muted-foreground">
                   <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   No loans yet
                 </td>
@@ -69,6 +71,9 @@ export default async function AdminLoansPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell text-xs">
                     {new Date(l.appliedAt).toLocaleDateString("en-KE")}
+                  </td>
+                  <td className="px-4 py-3">
+                    {l.status === "PENDING_APPROVAL" && <AdminLoanActions loanId={l.id} />}
                   </td>
                 </tr>
               ))

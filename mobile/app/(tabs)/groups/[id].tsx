@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import * as Contacts from "expo-contacts";
+import * as Contacts from "expo-contacts/legacy";
 import Toast from "react-native-toast-message";
 import { groupApi, walletApi, GroupResponse } from "@/lib/api";
 import { storage } from "@/lib/storage";
@@ -59,18 +59,10 @@ export default function GroupDetailScreen() {
       Toast.show({ type: "error", text1: "Contacts permission denied" });
       return;
     }
-    const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
-    });
-    if (!data.length) {
-      Toast.show({ type: "info", text1: "No contacts found" });
-      return;
-    }
-    // Present a simple picker — use the system contact picker via presentContactPickerAsync
     try {
       const contact = await Contacts.presentContactPickerAsync();
       if (!contact) return;
-      const phone = contact.phoneNumbers?.[0]?.number?.replace(/\s|-/g, "");
+      const phone = contact.phoneNumbers?.[0]?.number?.replace(/[\s-]/g, "");
       const email = contact.emails?.[0]?.email;
       setInviteQuery(phone ?? email ?? "");
     } catch {

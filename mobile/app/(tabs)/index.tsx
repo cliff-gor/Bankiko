@@ -39,7 +39,11 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  useFocusEffect(load);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   if (loading) {
     return (

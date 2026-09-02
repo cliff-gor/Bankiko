@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getWalletBalance, getGroups, getMe, getLoans, getPendingLoans, getAdminUsers } from "@/lib/api";
+import { getWalletBalance, getGroups, getMe, getLoans, getPendingLoans, getAdminUsers, getAdminGroups, getAdminLoans } from "@/lib/api";
 import { formatKES } from "@/lib/utils";
 import { Wallet, Users, TrendingUp, ArrowUpRight, ShieldCheck, Clock } from "lucide-react";
 import Link from "next/link";
@@ -19,9 +19,9 @@ export default async function DashboardPage() {
 async function AdminDashboard({ token, session }: { token: string; session: any }) {
   const [usersRes, groupsRes, pendingRes, loansRes] = await Promise.allSettled([
     getAdminUsers(token),
-    getGroups(token),
+    getAdminGroups(token),
     getPendingLoans(token),
-    getLoans(token),
+    getAdminLoans(token),
   ]);
 
   const users   = usersRes.status   === "fulfilled" ? usersRes.value   : null;
@@ -50,14 +50,14 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
           label="Total Members" value={users ? String(users.totalElements) : "—"}
           sub="Registered users" href="/admin/users" />
         <StatCard icon={<Users className="w-5 h-5 text-emerald-500" />}
-          label="Groups" value={groups ? String(groups.totalElements) : "—"}
-          sub="SACCO groups" href="/groups" />
+          label="Groups" value={groups ? String(groups.length) : "—"}
+          sub="SACCO groups" href="/admin/groups" />
         <StatCard icon={<Clock className="w-5 h-5 text-amber-500" />}
           label="Pending Loans" value={String(pending.length)}
-          sub="Awaiting approval" href="/loans" highlight={pending.length > 0} />
+          sub="Awaiting approval" href="/admin/loans" highlight={pending.length > 0} />
         <StatCard icon={<TrendingUp className="w-5 h-5 text-primary" />}
           label="Active Loans" value={String(activeLoans)}
-          sub="Disbursed loans" href="/loans" />
+          sub="Disbursed loans" href="/admin/loans" />
       </div>
 
       {/* Pending loan approvals */}
@@ -65,7 +65,7 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Pending Loan Approvals</h2>
-            <Link href="/loans" className="text-sm text-primary hover:underline">View all</Link>
+            <Link href="/admin/loans" className="text-sm text-primary hover:underline">View all</Link>
           </div>
           <div className="border rounded-xl divide-y overflow-hidden">
             {pending.slice(0, 5).map((l) => (
@@ -78,7 +78,7 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
                   </p>
                 </div>
                 <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">Pending</span>
-                <Link href="/loans" className="text-xs text-primary font-medium hover:underline">Review →</Link>
+                <Link href="/admin/loans" className="text-xs text-primary font-medium hover:underline">Review →</Link>
               </div>
             ))}
           </div>
