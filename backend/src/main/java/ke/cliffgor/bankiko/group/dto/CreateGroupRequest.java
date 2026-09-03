@@ -36,4 +36,17 @@ public class CreateGroupRequest {
     private int maxShares = 1000;
     @Min(1)
     private int loanMultiplier = 3;
+
+    // Loan interest
+    @DecimalMin("0.00") @DecimalMax("100.00")
+    private BigDecimal annualInterestRate = new BigDecimal("12.00");
+
+    private SaccoGroup.InterestType interestType = SaccoGroup.InterestType.REDUCING_BALANCE;
+
+    // Penalties
+    @DecimalMin("0.00") @DecimalMax("100.00")
+    private BigDecimal latePenaltyRate = new BigDecimal("5.00");
+
+    @DecimalMin("0.00")
+    private BigDecimal contributionPenalty = BigDecimal.ZERO;
 }

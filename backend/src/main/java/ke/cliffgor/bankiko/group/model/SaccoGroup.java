@@ -58,6 +58,25 @@ public class SaccoGroup {
     @Builder.Default
     private int minContributionsRequired = 3;
 
+    // Loan interest configuration
+    @Column(nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal annualInterestRate = new BigDecimal("12.00");
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private InterestType interestType = InterestType.REDUCING_BALANCE;
+
+    // Penalty config
+    @Column(nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal latePenaltyRate = new BigDecimal("5.00");  // % of installment
+
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal contributionPenalty = BigDecimal.ZERO;  // flat KES per missed month
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -83,6 +102,10 @@ public class SaccoGroup {
 
     public enum GroupType {
         CHAMA, SACCO
+    }
+
+    public enum InterestType {
+        REDUCING_BALANCE, FLAT_RATE
     }
 
     public enum GroupStatus {

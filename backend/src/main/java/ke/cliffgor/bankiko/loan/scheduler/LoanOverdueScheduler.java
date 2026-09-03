@@ -1,5 +1,7 @@
 package ke.cliffgor.bankiko.loan.scheduler;
 
+import ke.cliffgor.bankiko.group.model.SaccoGroup;
+import ke.cliffgor.bankiko.group.service.GroupService;
 import ke.cliffgor.bankiko.loan.model.LoanRepayment;
 import ke.cliffgor.bankiko.loan.repository.LoanRepaymentRepository;
 import ke.cliffgor.bankiko.notification.service.PushNotificationService;
@@ -10,6 +12,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -19,6 +23,7 @@ import java.util.List;
 public class LoanOverdueScheduler {
 
     private final LoanRepaymentRepository repaymentRepository;
+    private final GroupService groupService;
     private final SmsService smsService;
     private final PushNotificationService pushService;
 
@@ -33,6 +38,20 @@ public class LoanOverdueScheduler {
 
         for (LoanRepayment inst : overdue) {
             inst.setStatus(LoanRepayment.RepaymentStatus.OVERDUE);
+
+            // Calculate penalty = latePenaltyRate% of the installment amount
+            try {
+                SaccoGroup group = groupService.requireGroup(inst.getLoan().getGroupId());
+                if (group.getLatePenaltyRate() != null && group.getLatePenaltyRate().compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal penalty = inst.getAmountDue()
+                        .multiply(group.getLatePenaltyRate())
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    inst.setPenaltyAmount(penalty);
+                }
+            } catch (Exception e) {
+                log.warn("Could not compute penalty for installment={}: {}", inst.getId(), e.getMessage());
+            }
+
             repaymentRepository.save(inst);
 
             try {

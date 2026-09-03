@@ -138,12 +138,40 @@ public class LoanService {
             throw new BankikoException("Loan is not pending approval", HttpStatus.CONFLICT);
         }
 
+        SaccoGroup group = groupService.requireGroup(loan.getGroupId());
+
+        // Verify pool has enough funds to cover this disbursement
+        if (group.getFineractGroupAccountId() != null) {
+            try {
+                var poolBalance = fineractClient.getBalance(group.getFineractGroupAccountId());
+                BigDecimal available = poolBalance.getAvailableBalance() != null ? poolBalance.getAvailableBalance() : BigDecimal.ZERO;
+                if (available.compareTo(loan.getPrincipal()) < 0) {
+                    throw new BankikoException(
+                        "Insufficient group pool funds. Available: KES " + available + ", Requested: KES " + loan.getPrincipal(),
+                        HttpStatus.CONFLICT);
+                }
+            } catch (BankikoException e) {
+                throw e;
+            } catch (Exception e) {
+                log.warn("Could not verify pool balance, proceeding with disbursal: {}", e.getMessage());
+            }
+        }
+
+        // Snapshot interest config from the group at origination time
+        loan.setInterestRate(group.getAnnualInterestRate());
+        loan.setInterestType(group.getInterestType().name());
         loan.setStatus("ACTIVE");
         loan.setDisbursedAt(Instant.now());
+
+        // Calculate total interest so outstanding balance is set before schedule generation
+        BigDecimal totalInterest = calculateTotalInterest(
+            loan.getPrincipal(), group.getAnnualInterestRate(), group.getInterestType(), loan.getRepaymentMonths());
+        loan.setTotalInterest(totalInterest);
+        loan.setOutstandingBalance(loan.getPrincipal().add(totalInterest));
         loan = loanRepository.save(loan);
 
         // Generate monthly repayment schedule
-        generateRepaymentSchedule(loan);
+        generateRepaymentSchedule(loan, group.getInterestType());
 
         // Record disbursement in transaction history so it shows in member's wallet
         transactionRepository.save(MpesaTransaction.builder()
@@ -196,21 +224,30 @@ public class LoanService {
             log.warn("Fineract repayment failed, recording locally: {}", e.getMessage());
         }
 
-        // Mark the next pending installment as paid
+        // Mark the next pending/overdue installment as paid, deduct from outstanding balance
         repaymentRepository.findFirstByLoanIdAndStatusOrderByInstallmentNo(loanId, LoanRepayment.RepaymentStatus.PENDING)
+            .or(() -> repaymentRepository.findFirstByLoanIdAndStatusOrderByInstallmentNo(loanId, LoanRepayment.RepaymentStatus.OVERDUE))
             .ifPresent(inst -> {
                 inst.setAmountPaid(amount);
                 inst.setStatus(LoanRepayment.RepaymentStatus.PAID);
                 inst.setPaidAt(Instant.now());
                 repaymentRepository.save(inst);
 
-                // If all installments are paid, close the loan
+                // Reduce outstanding balance
+                if (loan.getOutstandingBalance() != null) {
+                    BigDecimal newBalance = loan.getOutstandingBalance().subtract(inst.getAmountDue()).max(BigDecimal.ZERO);
+                    loan.setOutstandingBalance(newBalance);
+                }
+
+                // If no PENDING or OVERDUE installments remain, close the loan
                 long remaining = repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId)
-                    .stream().filter(i -> i.getStatus() == LoanRepayment.RepaymentStatus.PENDING).count();
+                    .stream().filter(i -> i.getStatus() == LoanRepayment.RepaymentStatus.PENDING
+                        || i.getStatus() == LoanRepayment.RepaymentStatus.OVERDUE).count();
                 if (remaining == 0) {
                     loan.setStatus("CLOSED");
-                    loanRepository.save(loan);
+                    loan.setOutstandingBalance(BigDecimal.ZERO);
                 }
+                loanRepository.save(loan);
             });
 
         try {
@@ -226,20 +263,64 @@ public class LoanService {
         return repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId);
     }
 
-    private void generateRepaymentSchedule(Loan loan) {
-        BigDecimal monthly = loan.getPrincipal().divide(
-            BigDecimal.valueOf(loan.getRepaymentMonths()), 2, RoundingMode.HALF_UP);
+    private void generateRepaymentSchedule(Loan loan, SaccoGroup.InterestType interestType) {
+        int n = loan.getRepaymentMonths();
+        BigDecimal principal = loan.getPrincipal();
+        // Monthly interest rate = annualRate / 12 / 100
+        BigDecimal monthlyRate = loan.getInterestRate() != null
+            ? loan.getInterestRate().divide(BigDecimal.valueOf(1200), 10, RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+
         LocalDate base = LocalDate.now();
         List<LoanRepayment> schedule = new ArrayList<>();
-        for (int i = 1; i <= loan.getRepaymentMonths(); i++) {
-            schedule.add(LoanRepayment.builder()
-                .loan(loan)
-                .installmentNo(i)
-                .dueDate(base.plusMonths(i))
-                .amountDue(monthly)
-                .build());
+
+        if (interestType == SaccoGroup.InterestType.FLAT_RATE || monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
+            // Flat rate: interest = principal × annualRate/100 × years; spread equally
+            BigDecimal totalInterest = loan.getTotalInterest() != null ? loan.getTotalInterest() : BigDecimal.ZERO;
+            BigDecimal monthly = principal.add(totalInterest)
+                .divide(BigDecimal.valueOf(n), 2, RoundingMode.HALF_UP);
+            for (int i = 1; i <= n; i++) {
+                schedule.add(LoanRepayment.builder()
+                    .loan(loan).installmentNo(i).dueDate(base.plusMonths(i)).amountDue(monthly).build());
+            }
+        } else {
+            // Reducing balance (PMT formula): M = P × r(1+r)^n / ((1+r)^n - 1)
+            BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRate);
+            BigDecimal pow = onePlusR.pow(n);  // (1+r)^n — BigDecimal.pow only accepts int, fine for ≤360
+            BigDecimal pmt = principal.multiply(monthlyRate).multiply(pow)
+                .divide(pow.subtract(BigDecimal.ONE), 2, RoundingMode.HALF_UP);
+
+            BigDecimal balance = principal;
+            for (int i = 1; i <= n; i++) {
+                BigDecimal interest = balance.multiply(monthlyRate).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal principalPart = pmt.subtract(interest);
+                balance = balance.subtract(principalPart).max(BigDecimal.ZERO);
+                // Last installment: clear any rounding remainder
+                BigDecimal due = (i == n) ? pmt.add(balance) : pmt;
+                schedule.add(LoanRepayment.builder()
+                    .loan(loan).installmentNo(i).dueDate(base.plusMonths(i)).amountDue(due).build());
+            }
         }
+
         repaymentRepository.saveAll(schedule);
+    }
+
+    private BigDecimal calculateTotalInterest(
+            BigDecimal principal, BigDecimal annualRate, SaccoGroup.InterestType type, int months) {
+        if (annualRate == null || annualRate.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
+        if (type == SaccoGroup.InterestType.FLAT_RATE) {
+            // total interest = principal × annualRate/100 × (months/12)
+            return principal.multiply(annualRate)
+                .multiply(BigDecimal.valueOf(months))
+                .divide(BigDecimal.valueOf(1200), 2, RoundingMode.HALF_UP);
+        }
+        // Reducing balance: total = n × PMT - principal
+        BigDecimal monthlyRate = annualRate.divide(BigDecimal.valueOf(1200), 10, RoundingMode.HALF_UP);
+        BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRate);
+        BigDecimal pow = onePlusR.pow(months);
+        BigDecimal pmt = principal.multiply(monthlyRate).multiply(pow)
+            .divide(pow.subtract(BigDecimal.ONE), 2, RoundingMode.HALF_UP);
+        return pmt.multiply(BigDecimal.valueOf(months)).subtract(principal).max(BigDecimal.ZERO);
     }
 
     private LoanResponse toResponse(Loan loan) {
@@ -251,6 +332,10 @@ public class LoanService {
             .status(loan.getStatus())
             .groupName(loan.getGroupName())
             .purpose(loan.getPurpose())
+            .interestRate(loan.getInterestRate())
+            .interestType(loan.getInterestType())
+            .totalInterest(loan.getTotalInterest())
+            .outstandingBalance(loan.getOutstandingBalance())
             .appliedAt(loan.getAppliedAt())
             .disbursedAt(loan.getDisbursedAt())
             .build();

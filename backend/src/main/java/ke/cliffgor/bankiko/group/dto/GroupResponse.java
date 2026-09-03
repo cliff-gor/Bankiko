@@ -21,8 +21,12 @@ public class GroupResponse {
     private String role;
     private Instant createdAt;
     private int minContributionsRequired;
-    private java.math.BigDecimal sharePrice;
+    private BigDecimal sharePrice;
     private int minShares;
     private int maxShares;
     private int loanMultiplier;
+    private BigDecimal annualInterestRate;
+    private String interestType;
+    private BigDecimal latePenaltyRate;
+    private BigDecimal contributionPenalty;
 }

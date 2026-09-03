@@ -10,6 +10,7 @@ import ke.cliffgor.bankiko.group.model.GroupMember;
 import ke.cliffgor.bankiko.group.model.SaccoGroup;
 import ke.cliffgor.bankiko.group.repository.GroupMemberRepository;
 import ke.cliffgor.bankiko.group.repository.SaccoGroupRepository;
+import ke.cliffgor.bankiko.contribution.repository.ContributionRepository;
 import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -34,6 +39,7 @@ public class GroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final MemberService memberService;
     private final FineractClient fineractClient;
+    private final ContributionRepository contributionRepository;
 
     @Value("${bankiko.fineract.group-fund-product-id:2}")
     private int groupFundProductId;
@@ -78,6 +84,10 @@ public class GroupService {
             builder.maxShares(request.getMaxShares());
             builder.loanMultiplier(request.getLoanMultiplier());
             if (request.getSharePrice() != null) builder.sharePrice(request.getSharePrice());
+            if (request.getAnnualInterestRate() != null) builder.annualInterestRate(request.getAnnualInterestRate());
+            if (request.getInterestType() != null) builder.interestType(request.getInterestType());
+            if (request.getLatePenaltyRate() != null) builder.latePenaltyRate(request.getLatePenaltyRate());
+            if (request.getContributionPenalty() != null) builder.contributionPenalty(request.getContributionPenalty());
         }
 
         SaccoGroup group = builder.build();
@@ -177,6 +187,58 @@ public class GroupService {
             .stream().map(g -> toResponse(g, null)).toList();
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> getPoolBalance(UUID groupId, UUID userId) {
+        SaccoGroup group = requireGroup(groupId);
+        requireMembership(group, userId);
+
+        BigDecimal balance = BigDecimal.ZERO;
+        String source = "local";
+
+        if (group.getFineractGroupAccountId() != null) {
+            try {
+                var fb = fineractClient.getBalance(group.getFineractGroupAccountId());
+                balance = fb.getAvailableBalance() != null ? fb.getAvailableBalance() : BigDecimal.ZERO;
+                source = "fineract";
+            } catch (Exception e) {
+                log.warn("Fineract balance unavailable for group={}: {}", groupId, e.getMessage());
+            }
+        }
+
+        return Map.of(
+            "groupId", groupId.toString(),
+            "groupName", group.getName(),
+            "availableBalance", balance,
+            "fineractAccountId", group.getFineractGroupAccountId() != null ? group.getFineractGroupAccountId() : "not-provisioned",
+            "source", source
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getDefaulters(UUID groupId, UUID userId) {
+        SaccoGroup group = requireGroup(groupId);
+        requireMembership(group, userId);
+
+        String currentMonth = YearMonth.now().toString();
+        List<GroupMember> allMembers = groupMemberRepository.findByGroup(group);
+
+        return allMembers.stream()
+            .filter(gm -> contributionRepository
+                .findByMemberAndGroupAndContributionMonth(gm.getMember(), group, currentMonth)
+                .isEmpty())
+            .map(gm -> {
+                Member m = gm.getMember();
+                return Map.<String, Object>of(
+                    "memberId", m.getId().toString(),
+                    "name", m.getUser().getFullName(),
+                    "phone", m.getUser().getPhone(),
+                    "role", gm.getRole().name(),
+                    "month", currentMonth
+                );
+            })
+            .toList();
+    }
+
     public SaccoGroup requireGroup(UUID groupId) {
         return groupRepository.findById(groupId)
             .orElseThrow(() -> new ResourceNotFoundException("Group", groupId));
@@ -219,6 +281,10 @@ public class GroupService {
             .minShares(g.getMinShares())
             .maxShares(g.getMaxShares())
             .loanMultiplier(g.getLoanMultiplier())
+            .annualInterestRate(g.getAnnualInterestRate())
+            .interestType(g.getInterestType() != null ? g.getInterestType().name() : null)
+            .latePenaltyRate(g.getLatePenaltyRate())
+            .contributionPenalty(g.getContributionPenalty())
             .build();
     }
 }

@@ -65,6 +65,24 @@ public class GroupController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Get group treasury pool balance")
+    @GetMapping("/{groupId}/balance")
+    public ResponseEntity<?> getBalance(
+        @PathVariable UUID groupId,
+        @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(groupService.getPoolBalance(groupId, user.getId()));
+    }
+
+    @Operation(summary = "Get members who have not contributed this month (defaulters)")
+    @GetMapping("/{groupId}/defaulters")
+    public ResponseEntity<?> getDefaulters(
+        @PathVariable UUID groupId,
+        @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(groupService.getDefaulters(groupId, user.getId()));
+    }
+
     @Operation(summary = "Add a member to the group (admin only)")
     @PostMapping("/{groupId}/members/{targetUserId}")
     public ResponseEntity<Void> addMember(

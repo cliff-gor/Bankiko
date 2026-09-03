@@ -42,6 +42,13 @@ public class LoanRepayment {
     @Builder.Default
     private RepaymentStatus status = RepaymentStatus.PENDING;
 
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal penaltyAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    private boolean penaltyPaid = false;
+
     private Instant paidAt;
 
     @Builder.Default

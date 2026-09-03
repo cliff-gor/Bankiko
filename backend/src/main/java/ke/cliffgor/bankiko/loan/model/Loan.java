@@ -42,6 +42,17 @@ public class Loan {
 
     private Long fineractLoanId;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal interestRate;       // annual %, snapshot at origination
+
+    private String interestType;           // REDUCING_BALANCE | FLAT_RATE
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal totalInterest;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal outstandingBalance;
+
     @Builder.Default
     private Instant appliedAt = Instant.now();
 

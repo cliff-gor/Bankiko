@@ -17,6 +17,10 @@ public class LoanResponse {
     private String status;
     private String groupName;
     private String purpose;
+    private BigDecimal interestRate;
+    private String interestType;
+    private BigDecimal totalInterest;
+    private BigDecimal outstandingBalance;
     private Instant appliedAt;
     private Instant disbursedAt;
 }
