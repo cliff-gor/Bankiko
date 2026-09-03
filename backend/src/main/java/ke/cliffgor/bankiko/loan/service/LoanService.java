@@ -95,6 +95,25 @@ public class LoanService {
             }
         }
 
+        // All groups: verify the pool has sufficient funds before accepting the application
+        if (group.getFineractGroupAccountId() != null) {
+            try {
+                var poolBalance = fineractClient.getBalance(group.getFineractGroupAccountId());
+                BigDecimal available = poolBalance.getAvailableBalance() != null
+                    ? poolBalance.getAvailableBalance() : BigDecimal.ZERO;
+                if (available.compareTo(request.getPrincipal()) < 0) {
+                    throw new BankikoException(
+                        "Insufficient group pool funds. Pool has KES " + available +
+                        " but you requested KES " + request.getPrincipal() + ".",
+                        HttpStatus.CONFLICT);
+                }
+            } catch (BankikoException e) {
+                throw e;
+            } catch (Exception e) {
+                log.warn("Could not verify pool balance at application time: {}", e.getMessage());
+            }
+        }
+
         Loan loan = Loan.builder()
             .user(user)
             .groupId(group.getId())

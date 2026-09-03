@@ -254,6 +254,21 @@ export async function markLoanPaid(token: string, loanId: string) {
   return request<void>(`/api/loans/${loanId}/mark-paid`, { method: "POST" }, token);
 }
 
+export interface LoanRulesUpdate {
+  annualInterestRate?: number;
+  interestType?: "REDUCING_BALANCE" | "FLAT_RATE";
+  loanMultiplier?: number;
+  minContributionsRequired?: number;
+  latePenaltyRate?: number;
+}
+
+export async function updateGroupLoanRules(token: string, groupId: string, body: LoanRulesUpdate) {
+  return request<GroupResponse>(`/api/groups/${groupId}/loan-rules`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  }, token);
+}
+
 export async function repayLoan(token: string, loanId: string, amount: number) {
   return request<void>(`/api/loans/${loanId}/repay?amount=${amount}`, { method: "POST" }, token);
 }

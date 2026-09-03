@@ -35,7 +35,15 @@ export interface GroupResponse {
   status: string;
   groupType: "SACCO" | "CHAMA";
   memberCount: number;
+  role?: string;
   createdAt: string;
+  // Loan rules
+  annualInterestRate?: number;
+  interestType?: "REDUCING_BALANCE" | "FLAT_RATE";
+  loanMultiplier?: number;
+  minContributionsRequired?: number;
+  latePenaltyRate?: number;
+  contributionPenalty?: number;
 }
 
 export type AdminGroupSummary = GroupResponse;

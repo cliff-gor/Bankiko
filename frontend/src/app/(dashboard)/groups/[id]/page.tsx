@@ -6,6 +6,7 @@ import { Users, Calendar, TrendingUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ContributeDialog } from "@/components/groups/ContributeDialog";
 import { InviteShareSheet } from "@/components/groups/InviteShareSheet";
+import { LoanRulesPanel } from "@/components/groups/LoanRulesPanel";
 
 export default async function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -113,6 +114,11 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </div>
+
+      {/* Loan rules — group admin only */}
+      {group.role === "ADMIN" && (
+        <LoanRulesPanel group={group} token={token} />
+      )}
 
       <p className="text-xs text-muted-foreground">Created {formatDate(group.createdAt)}</p>
     </div>

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import ke.cliffgor.bankiko.group.dto.UpdateLoanRulesRequest;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.List;
@@ -242,6 +243,22 @@ public class GroupService {
     public SaccoGroup requireGroup(UUID groupId) {
         return groupRepository.findById(groupId)
             .orElseThrow(() -> new ResourceNotFoundException("Group", groupId));
+    }
+
+    @Transactional
+    public GroupResponse updateLoanRules(UUID groupId, UUID userId, UpdateLoanRulesRequest req) {
+        SaccoGroup group = requireGroup(groupId);
+        requireAdminRole(group, userId);
+
+        if (req.getAnnualInterestRate() != null) group.setAnnualInterestRate(req.getAnnualInterestRate());
+        if (req.getInterestType() != null)       group.setInterestType(req.getInterestType());
+        if (req.getLoanMultiplier() != null)      group.setLoanMultiplier(req.getLoanMultiplier());
+        if (req.getMinContributionsRequired() != null) group.setMinContributionsRequired(req.getMinContributionsRequired());
+        if (req.getLatePenaltyRate() != null)    group.setLatePenaltyRate(req.getLatePenaltyRate());
+
+        group = groupRepository.save(group);
+        Member member = memberService.requireActiveByUserId(userId);
+        return toResponse(group, member);
     }
 
     public GroupMember requireMembership(SaccoGroup group, UUID userId) {

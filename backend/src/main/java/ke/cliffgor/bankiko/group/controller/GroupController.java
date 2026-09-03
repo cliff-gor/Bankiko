@@ -7,6 +7,7 @@ import ke.cliffgor.bankiko.auth.model.User;
 import ke.cliffgor.bankiko.auth.repository.UserRepository;
 import ke.cliffgor.bankiko.group.dto.CreateGroupRequest;
 import ke.cliffgor.bankiko.group.dto.GroupResponse;
+import ke.cliffgor.bankiko.group.dto.UpdateLoanRulesRequest;
 import ke.cliffgor.bankiko.group.service.GroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -81,6 +82,16 @@ public class GroupController {
         @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(groupService.getDefaulters(groupId, user.getId()));
+    }
+
+    @Operation(summary = "Update loan rules for the group (group admin only)")
+    @PatchMapping("/{groupId}/loan-rules")
+    public ResponseEntity<GroupResponse> updateLoanRules(
+        @PathVariable UUID groupId,
+        @Valid @RequestBody UpdateLoanRulesRequest request,
+        @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(groupService.updateLoanRules(groupId, user.getId(), request));
     }
 
     @Operation(summary = "Add a member to the group (admin only)")
