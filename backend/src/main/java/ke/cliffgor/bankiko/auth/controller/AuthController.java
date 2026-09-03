@@ -7,10 +7,12 @@ import ke.cliffgor.bankiko.auth.dto.AuthResponse;
 import ke.cliffgor.bankiko.auth.dto.LoginRequest;
 import ke.cliffgor.bankiko.auth.dto.RefreshRequest;
 import ke.cliffgor.bankiko.auth.dto.RegisterRequest;
+import ke.cliffgor.bankiko.auth.model.User;
 import ke.cliffgor.bankiko.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Authentication")
@@ -45,4 +47,12 @@ public class AuthController {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "Get current authenticated user info")
+    @GetMapping("/me")
+    public ResponseEntity<MeResponse> me(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(new MeResponse(user.getId().toString(), user.getFullName(), user.getEmail(), user.getRole().name()));
+    }
+
+    record MeResponse(String id, String fullName, String email, String role) {}
 }

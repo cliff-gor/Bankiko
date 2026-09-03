@@ -12,11 +12,11 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "https://bankiko.onrender.co
 
 async function validateToken(token: string): Promise<"ok" | "expired" | "server_down"> {
   try {
-    const res = await fetch(`${API_BASE}/actuator/health/liveness`, {
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.status === 502 || res.status === 503) return "server_down";
-    if (res.status === 401) return "expired";
+    if (res.status === 401 || res.status === 403) return "expired";
     return "ok";
   } catch {
     return "server_down";
