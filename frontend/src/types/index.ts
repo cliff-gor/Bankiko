@@ -33,9 +33,12 @@ export interface GroupResponse {
   contributionDueDay: number;
   fineractGroupAccountId: number;
   status: string;
+  groupType: "SACCO" | "CHAMA";
   memberCount: number;
   createdAt: string;
 }
+
+export type AdminGroupSummary = GroupResponse;
 
 export interface ContributionResponse {
   id: string;
