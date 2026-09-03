@@ -75,6 +75,8 @@ springdoc:
 
 # Application-specific config
 bankiko:
+  app-url: ${APP_URL:https://bankiko.app}
+
   fineract:
     base-url: ${FINERACT_BASE_URL:http://localhost:8443/fineract-provider/api/v1}
     tenant: ${FINERACT_TENANT:default}
@@ -118,6 +120,3 @@ logging:
     ke.cliffgor.bankiko: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
-
-bankiko:
-  app-url: ${APP_URL:https://bankiko.app}
