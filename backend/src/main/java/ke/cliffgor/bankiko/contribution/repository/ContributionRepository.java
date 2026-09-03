@@ -20,4 +20,6 @@ public interface ContributionRepository extends JpaRepository<Contribution, UUID
     List<Contribution> findByMemberAndGroupOrderByPaidAtDesc(Member member, SaccoGroup group);
 
     long countByMemberAndGroup(Member member, SaccoGroup group);
+
+    List<Contribution> findByMemberOrderByPaidAtDesc(Member member);
 }

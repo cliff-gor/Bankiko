@@ -132,6 +132,18 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- PDF generation (member statements, SASRA reports) -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>kernel</artifactId>
+            <version>7.2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>layout</artifactId>
+            <version>7.2.5</version>
+        </dependency>
+
         <!-- Micrometer Prometheus -->
         <dependency>
             <groupId>io.micrometer</groupId>
