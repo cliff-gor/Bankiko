@@ -319,6 +319,21 @@ export async function joinViaInvite(
   return res.json();
 }
 
+export async function createGroupInvite(
+  accessToken: string,
+  groupId: string
+): Promise<{ inviteUrl: string }> {
+  const res = await fetch(`${BASE_URL}/api/groups/${groupId}/invites`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Failed to create invite");
+  return res.json();
+}
+
 export const deviceTokenApi = {
   register: (token: string, platform = "FCM") =>
     request<void>("/api/device-tokens", {

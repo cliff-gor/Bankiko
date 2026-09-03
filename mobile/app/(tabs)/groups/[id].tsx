@@ -14,7 +14,8 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Contacts from "expo-contacts/legacy";
 import Toast from "react-native-toast-message";
-import { groupApi, walletApi, shareApi, ShareHoldingResponse, GroupResponse } from "@/lib/api";
+import { groupApi, walletApi, shareApi, ShareHoldingResponse, GroupResponse, getInviteDetails, createGroupInvite } from "@/lib/api";
+import { Share } from "react-native";
 import { storage } from "@/lib/storage";
 
 export default function GroupDetailScreen() {
@@ -28,6 +29,8 @@ export default function GroupDetailScreen() {
   const [foundUser, setFoundUser] = useState<{ id: string; fullName: string; phone: string; email: string } | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [userNotFound, setUserNotFound] = useState(false);
+  const [sharingInvite, setSharingInvite] = useState(false);
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -84,13 +87,32 @@ export default function GroupDetailScreen() {
     if (!inviteQuery.trim()) return;
     setLookingUp(true);
     setFoundUser(null);
+    setUserNotFound(false);
     try {
       const user = await groupApi.lookupUser(inviteQuery.trim());
       setFoundUser(user);
     } catch {
-      Toast.show({ type: "error", text1: "User not found", text2: "Check the phone or email and try again" });
+      // User is not on Bankiko yet — offer invite link instead
+      setUserNotFound(true);
     } finally {
       setLookingUp(false);
+    }
+  }
+
+  async function handleShareInviteLink() {
+    if (!id) return;
+    setSharingInvite(true);
+    try {
+      const token = await storage.getAccessToken();
+      const invite = await createGroupInvite(token!, id);
+      await Share.share({
+        message: `Join ${group?.name} on Bankiko! Tap the link to sign up and be added automatically: ${invite.inviteUrl}`,
+        url: invite.inviteUrl,
+      });
+    } catch {
+      Toast.show({ type: "error", text1: "Could not generate invite link" });
+    } finally {
+      setSharingInvite(false);
     }
   }
 
@@ -317,7 +339,24 @@ export default function GroupDetailScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setInviteModal(false); setInviteQuery(""); setFoundUser(null); }}>
+            {userNotFound && (
+              <View style={{ backgroundColor: "#fefce8", borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#fde68a" }}>
+                <Text style={{ fontWeight: "600", color: "#92400e", marginBottom: 4 }}>Not on Bankiko yet</Text>
+                <Text style={{ fontSize: 13, color: "#78350f", marginBottom: 12 }}>
+                  This person doesn't have a Bankiko account. Share an invite link so they can sign up and be added to the group automatically.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.submitBtn, { alignSelf: "flex-start", paddingHorizontal: 16 }]}
+                  onPress={handleShareInviteLink}
+                  disabled={sharingInvite}
+                >
+                  {sharingInvite
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.submitBtnText}>Share invite link</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setInviteModal(false); setInviteQuery(""); setFoundUser(null); setUserNotFound(false); }}>
               <Text style={styles.cancelBtnText}>Close</Text>
             </TouchableOpacity>
           </View>
