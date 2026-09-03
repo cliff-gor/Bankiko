@@ -75,6 +75,16 @@ public class LoanController {
         return ResponseEntity.ok(loanService.listRepayments(loanId));
     }
 
+    @Operation(summary = "Mark a loan as fully paid (admin override)")
+    @PostMapping("/{loanId}/mark-paid")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<LoanResponse> markPaid(
+        @PathVariable UUID loanId,
+        @AuthenticationPrincipal User adminUser
+    ) {
+        return ResponseEntity.ok(loanService.markPaid(loanId, adminUser));
+    }
+
     @Operation(summary = "Make a loan repayment")
     @PostMapping("/{loanId}/repay")
     public ResponseEntity<Void> repay(

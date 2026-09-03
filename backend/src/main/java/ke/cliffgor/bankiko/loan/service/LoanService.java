@@ -263,6 +263,34 @@ public class LoanService {
         return repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId);
     }
 
+    @Transactional
+    public LoanResponse markPaid(UUID loanId, User adminUser) {
+        Loan loan = loanRepository.findById(loanId)
+            .orElseThrow(() -> new BankikoException("Loan not found", HttpStatus.NOT_FOUND));
+
+        if ("CLOSED".equals(loan.getStatus())) {
+            throw new BankikoException("Loan is already closed", HttpStatus.CONFLICT);
+        }
+
+        // Mark all remaining installments as paid
+        repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId).stream()
+            .filter(i -> i.getStatus() != LoanRepayment.RepaymentStatus.PAID)
+            .forEach(i -> {
+                i.setStatus(LoanRepayment.RepaymentStatus.PAID);
+                i.setAmountPaid(i.getAmountDue());
+                i.setPaidAt(Instant.now());
+                repaymentRepository.save(i);
+            });
+
+        loan.setStatus("CLOSED");
+        loan.setOutstandingBalance(BigDecimal.ZERO);
+        loan = loanRepository.save(loan);
+
+        pushService.sendToUser(loan.getUser(), "Loan Closed", "Your loan from " + loan.getGroupName() + " is now fully paid.");
+        log.info("Loan marked paid: loanId={} by adminId={}", loanId, adminUser.getId());
+        return toResponse(loan);
+    }
+
     private void generateRepaymentSchedule(Loan loan, SaccoGroup.InterestType interestType) {
         int n = loan.getRepaymentMonths();
         BigDecimal principal = loan.getPrincipal();

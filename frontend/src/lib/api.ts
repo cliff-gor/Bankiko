@@ -231,15 +231,31 @@ export async function getShareRegister(token: string, groupId: string) {
   return request<ShareHoldingResponse[]>(`/api/shares/groups/${groupId}/register`, {}, token);
 }
 
+export interface AdminLoanSummary {
+  id: string;
+  userId: string;
+  memberName: string;
+  groupName: string;
+  principal: number;
+  repaymentMonths: number;
+  status: string;
+  purpose: string | null;
+  outstandingBalance: number | null;
+  totalInterest: number | null;
+  appliedAt: string;
+  disbursedAt: string | null;
+}
+
 export async function getAdminLoans(token: string) {
-  return request<{ id: string; userId: string; memberName: string; groupName: string; principal: number; repaymentMonths: number; status: string; purpose: string | null; appliedAt: string; disbursedAt: string | null }[]>("/api/admin/loans", {}, token);
+  return request<AdminLoanSummary[]>("/api/admin/loans", {}, token);
+}
+
+export async function markLoanPaid(token: string, loanId: string) {
+  return request<void>(`/api/loans/${loanId}/mark-paid`, { method: "POST" }, token);
 }
 
 export async function repayLoan(token: string, loanId: string, amount: number) {
-  return request<void>(`/api/loans/${loanId}/repay`, {
-    method: "POST",
-    body: JSON.stringify({ amount }),
-  }, token);
+  return request<void>(`/api/loans/${loanId}/repay?amount=${amount}`, { method: "POST" }, token);
 }
 
 // ── Dividends ───────────────────────────────────────────────────────────────

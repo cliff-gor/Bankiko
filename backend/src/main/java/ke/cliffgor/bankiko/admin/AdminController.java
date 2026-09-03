@@ -126,7 +126,8 @@ public class AdminController {
         return ResponseEntity.ok(loanRepository.findAll(Sort.by("appliedAt").descending()).stream()
             .map(l -> new LoanSummary(l.getId(), l.getUser().getId(), l.getUser().getFullName(),
                 l.getGroupName(), l.getPrincipal(), l.getRepaymentMonths(), l.getStatus(),
-                l.getPurpose(), l.getAppliedAt(), l.getDisbursedAt()))
+                l.getPurpose(), l.getOutstandingBalance(), l.getTotalInterest(),
+                l.getAppliedAt(), l.getDisbursedAt()))
             .toList());
     }
 
@@ -152,6 +153,8 @@ public class AdminController {
     public record LoanSummary(UUID id, UUID userId, String memberName, String groupName,
                               java.math.BigDecimal principal, int repaymentMonths,
                               String status, String purpose,
+                              java.math.BigDecimal outstandingBalance,
+                              java.math.BigDecimal totalInterest,
                               Instant appliedAt, Instant disbursedAt) {}
     public record UserSummary(UUID id, String fullName, String email, String phone,
                               String role, boolean enabled, Instant createdAt) {}
