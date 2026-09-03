@@ -25,6 +25,7 @@ export default function LoginPage() {
     ? new URLSearchParams(window.location.search)
     : null;
   const redirectTo = searchParams?.get("redirect") ?? "/dashboard";
+  const sessionExpired = searchParams?.get("reason") === "session_expired";
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -53,6 +54,11 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground text-xl font-bold">B</div>
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="text-muted-foreground text-sm">Sign in to your Bankiko account</p>
+          {sessionExpired && (
+            <p className="text-amber-600 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Your session expired. Please sign in again.
+            </p>
+          )}
         </div>
 
         <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">

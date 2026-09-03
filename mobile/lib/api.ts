@@ -43,16 +43,32 @@ async function handleTokenRefresh(): Promise<string | null> {
   }
 }
 
+export class ServerUnavailableError extends Error {
+  constructor() { super("Server is starting up"); }
+}
+
 async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
   const token = await storage.getAccessToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // Network error — Render instance asleep or no connectivity
+    throw new ServerUnavailableError();
+  }
+
+  // Render cold-start gateway errors
+  if (res.status === 502 || res.status === 503) {
+    throw new ServerUnavailableError();
+  }
 
   if (res.status === 401 && retry) {
     const newToken = await handleTokenRefresh();

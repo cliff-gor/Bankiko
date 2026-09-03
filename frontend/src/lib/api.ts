@@ -10,6 +10,12 @@ async function getToken(): Promise<string | null> {
   return (session as any)?.accessToken ?? null;
 }
 
+// Thrown for network errors and 502/503 (Render cold start) so callers can
+// show a "server is starting up" message instead of a generic blank screen.
+export class ServerUnavailableError extends Error {
+  constructor() { super("Server is starting up, please wait…"); }
+}
+
 async function request<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -18,8 +24,21 @@ async function request<T>(path: string, init?: RequestInit, token?: string): Pro
 
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...init, headers });
+  } catch {
+    // Network error — Render instance is sleeping or no connectivity
+    throw new ServerUnavailableError();
+  }
 
+  // Render returns 502/503 while the instance is cold-starting
+  if (res.status === 502 || res.status === 503) {
+    throw new ServerUnavailableError();
+  }
+
+  // 401 on a server component — session refresh will be handled by NextAuth jwt
+  // callback; just throw so the component can handle gracefully.
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw { status: res.status, ...err };
