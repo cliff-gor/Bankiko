@@ -1,10 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { joinViaInvite, InviteDetails } from "@/lib/api";
-import { Users, Building2, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Users, Building2, Clock, CheckCircle2, AlertCircle,
+  Smartphone, Download,
+} from "lucide-react";
+
+// Store URLs — update once published
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ke.cliffgor.bankiko";
+const APP_STORE_URL  = "https://apps.apple.com/app/bankiko/id000000000"; // update after submission
+
+type OS = "android" | "ios" | "other";
+
+function detectOS(): OS {
+  if (typeof navigator === "undefined") return "other";
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "android";
+  if (/iphone|ipad|ipod/i.test(ua)) return "ios";
+  return "other";
+}
 
 interface Props {
   invite: InviteDetails | null;
@@ -19,13 +36,52 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [os, setOs] = useState<OS>("other");
+  const [appOpenAttempted, setAppOpenAttempted] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleJoin() {
+  useEffect(() => {
+    setOs(detectOS());
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  function tryOpenApp() {
+    // Try the custom scheme first — if app is installed it opens immediately.
+    // After 1.2s (app didn't intercept) fall through to store.
+    const deepLink = `bankiko://join/${inviteToken}`;
+    setAppOpenAttempted(true);
+
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = deepLink;
+    document.body.appendChild(iframe);
+
+    timerRef.current = setTimeout(() => {
+      document.body.removeChild(iframe);
+      // App not installed — redirect to store
+      const storeUrl = os === "ios" ? APP_STORE_URL : PLAY_STORE_URL;
+      window.location.href = storeUrl;
+    }, 1200);
+
+    // If the page loses visibility the app opened — cancel the store redirect
+    const onVisibilityChange = () => {
+      if (document.hidden && timerRef.current) {
+        clearTimeout(timerRef.current);
+        document.body.removeChild(iframe);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+  }
+
+  async function handleWebJoin() {
     if (!accessToken) return;
     setJoining(true);
     setJoinError(null);
     try {
-      const result = await joinViaInvite(accessToken, inviteToken);
+      await joinViaInvite(accessToken, inviteToken);
       setJoined(true);
       setTimeout(() => router.push("/groups"), 1500);
     } catch (e: any) {
@@ -40,6 +96,9 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
   const expiresInHours = expiresAt
     ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 3_600_000))
     : 0;
+  const isMobile = os === "android" || os === "ios";
+  const storeUrl = os === "ios" ? APP_STORE_URL : PLAY_STORE_URL;
+  const storeLabel = os === "ios" ? "App Store" : "Google Play";
 
   return (
     <div className="w-full max-w-md">
@@ -70,9 +129,7 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
             {/* Group type badge */}
             <div className="flex justify-center">
               <span className={`text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full ${
-                isSacco
-                  ? "bg-purple-100 text-purple-700"
-                  : "bg-amber-100 text-amber-700"
+                isSacco ? "bg-purple-100 text-purple-700" : "bg-amber-100 text-amber-700"
               }`}>
                 {isSacco ? "SACCO" : "Chama"}
               </span>
@@ -104,7 +161,6 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
               </div>
             )}
 
-            {/* What SACCO members get */}
             {isSacco && (
               <ul className="space-y-1.5 text-sm text-muted-foreground">
                 {["Buy shares and earn dividends", "Access loans against your share capital", "Monthly contributions tracked automatically"].map((f) => (
@@ -120,10 +176,46 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
               <p className="text-sm text-destructive text-center">{joinError}</p>
             )}
 
-            {/* Actions */}
+            {/* ── Mobile: try to open app first ─────────────── */}
+            {isMobile && (
+              <div className="space-y-3">
+                <button
+                  onClick={tryOpenApp}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  Open in Bankiko app
+                </button>
+
+                {appOpenAttempted && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Redirecting to {storeLabel} if the app isn't installed…
+                  </p>
+                )}
+
+                <a
+                  href={storeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 border rounded-xl py-2.5 text-sm font-medium hover:bg-accent transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download from {storeLabel}
+                </a>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex-1 border-t" />
+                  <span>or join on web</span>
+                  <div className="flex-1 border-t" />
+                </div>
+              </div>
+            )}
+
+            {/* ── Web join actions ───────────────────────────── */}
             {isLoggedIn ? (
               <button
-                onClick={handleJoin}
+                onClick={handleWebJoin}
                 disabled={joining}
                 className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
               >
@@ -148,6 +240,13 @@ export function JoinGroupClient({ invite, error, inviteToken, isLoggedIn, access
           </>
         )}
       </div>
+
+      {/* Footer note for mobile */}
+      {isMobile && !error && (
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Best experience in the Bankiko {os === "ios" ? "iOS" : "Android"} app
+        </p>
+      )}
     </div>
   );
 }

@@ -273,6 +273,36 @@ export const statementApi = {
   list: () => request<StatementEntry[]>("/api/wallet/statement"),
 };
 
+export interface InviteDetails {
+  groupId: string;
+  groupName: string;
+  groupType: "SACCO" | "CHAMA";
+  expiresAt: string;
+  inviteUrl: string;
+}
+
+// Public endpoint — no auth needed
+export async function getInviteDetails(token: string): Promise<InviteDetails> {
+  const res = await fetch(`${BASE_URL}/api/invites/${token}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Invalid invite");
+  return res.json();
+}
+
+export async function joinViaInvite(
+  accessToken: string,
+  inviteToken: string
+): Promise<{ message: string; groupId: string; groupType: string }> {
+  const res = await fetch(`${BASE_URL}/api/invites/${inviteToken}/join`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? "Failed to join");
+  return res.json();
+}
+
 export const deviceTokenApi = {
   register: (token: string, platform = "FCM") =>
     request<void>("/api/device-tokens", {

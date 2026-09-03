@@ -8,14 +8,37 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ke.cliffgor.bankiko"
+      "bundleIdentifier": "ke.cliffgor.bankiko",
+      "associatedDomains": [
+        "applinks:bankiko.app",
+        "applinks:bankiko.onrender.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#16a34a"
       },
-      "package": "ke.cliffgor.bankiko"
+      "package": "ke.cliffgor.bankiko",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "bankiko.app",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "bankiko.onrender.com",
+              "pathPrefix": "/join"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "plugins": [
       "expo-router",
