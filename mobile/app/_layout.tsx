@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
@@ -79,13 +79,17 @@ export default function RootLayout() {
 
   useEffect(() => { bootstrap(); }, [bootstrap]);
 
-  if (!ready) return null;
-
   return (
     <View style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }} />
       <StatusBar style="auto" />
       <Toast />
+      {/* Loading overlay — shown until bootstrap completes so Stack is always mounted before navigation fires */}
+      {!ready && (
+        <View style={{ position: "absolute", inset: 0, backgroundColor: "#fff", justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#16a34a" />
+        </View>
+      )}
       {serverDown && <ServerWakingOverlay onRetry={bootstrap} />}
     </View>
   );
