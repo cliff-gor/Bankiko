@@ -215,3 +215,39 @@ export async function getShareRegister(token: string, groupId: string) {
 export async function getAdminLoans(token: string) {
   return request<{ id: string; userId: string; memberName: string; groupName: string; principal: number; repaymentMonths: number; status: string; purpose: string | null; appliedAt: string; disbursedAt: string | null }[]>("/api/admin/loans", {}, token);
 }
+
+// ── Invites ────────────────────────────────────────────────────────────────
+
+export interface InviteDetails {
+  inviteId: string;
+  token: string;
+  groupId: string;
+  groupName: string;
+  groupType: "SACCO" | "CHAMA";
+  expiresAt: string;
+  maxUses: number | null;
+  useCount: number;
+  inviteUrl: string;
+}
+
+export async function createGroupInvite(
+  token: string,
+  groupId: string,
+  ttlHours = 168,
+  maxUses?: number
+): Promise<InviteDetails> {
+  const params = new URLSearchParams({ ttlHours: String(ttlHours) });
+  if (maxUses != null) params.set("maxUses", String(maxUses));
+  return request<InviteDetails>(`/api/groups/${groupId}/invites?${params}`, { method: "POST" }, token);
+}
+
+export async function getInviteDetails(inviteToken: string): Promise<InviteDetails> {
+  return request<InviteDetails>(`/api/invites/${inviteToken}`);
+}
+
+export async function joinViaInvite(
+  token: string,
+  inviteToken: string
+): Promise<{ message: string; groupId: string; groupType: string }> {
+  return request(`/api/invites/${inviteToken}/join`, { method: "POST" }, token);
+}

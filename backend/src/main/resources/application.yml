@@ -118,3 +118,6 @@ logging:
     ke.cliffgor.bankiko: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
+
+bankiko:
+  app-url: ${APP_URL:https://bankiko.app}

@@ -5,6 +5,7 @@ import { formatKES, formatDate } from "@/lib/utils";
 import { Users, Calendar, TrendingUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ContributeDialog } from "@/components/groups/ContributeDialog";
+import { InviteShareSheet } from "@/components/groups/InviteShareSheet";
 
 export default async function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,6 +61,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           )}
         </div>
         <ContributeDialog groupId={group.id} groupName={group.name} />
+        <InviteShareSheet groupId={group.id} groupName={group.name} token={token} />
       </div>
 
       {/* Stats */}

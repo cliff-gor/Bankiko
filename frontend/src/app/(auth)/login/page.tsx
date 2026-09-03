@@ -21,6 +21,11 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const redirectTo = searchParams?.get("redirect") ?? "/dashboard";
+
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
@@ -37,7 +42,7 @@ export default function LoginPage() {
       // then push() navigates so the dashboard loads with fresh session data.
       router.refresh();
       await new Promise((r) => setTimeout(r, 300));
-      router.push("/dashboard");
+      router.push(redirectTo);
     }
   }
 

@@ -38,6 +38,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invites/*").permitAll()
                 // M-Pesa callbacks come from Safaricom — no auth header
                 .requestMatchers("/api/mpesa/callback/**").permitAll()
                 // API docs
