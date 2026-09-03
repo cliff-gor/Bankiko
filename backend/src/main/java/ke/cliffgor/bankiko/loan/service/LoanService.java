@@ -14,6 +14,7 @@ import ke.cliffgor.bankiko.member.service.MemberService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.repository.MpesaTransactionRepository;
 import ke.cliffgor.bankiko.notification.service.SmsService;
+import ke.cliffgor.bankiko.share.repository.ShareHoldingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,7 @@ public class LoanService {
     private final GroupService groupService;
     private final SmsService smsService;
     private final MpesaTransactionRepository transactionRepository;
+    private final ShareHoldingRepository shareHoldingRepository;
 
     @Transactional(readOnly = true)
     public List<LoanResponse> listForUser(UUID userId) {
@@ -55,6 +57,21 @@ public class LoanService {
         Member member = memberService.requireActiveByUserId(user.getId());
         SaccoGroup group = groupService.requireGroup(request.getGroupId());
         groupService.requireMembership(group, user.getId());
+
+        // SACCO groups enforce share-based loan eligibility
+        if (group.getGroupType() == SaccoGroup.GroupType.SACCO) {
+            var holding = shareHoldingRepository.findByGroupIdAndMemberId(group.getId(), member.getId());
+            int sharesHeld = holding.map(ke.cliffgor.bankiko.share.model.ShareHolding::getSharesHeld).orElse(0);
+            BigDecimal maxLoan = group.getSharePrice()
+                .multiply(BigDecimal.valueOf(sharesHeld))
+                .multiply(BigDecimal.valueOf(group.getLoanMultiplier()));
+            if (request.getPrincipal().compareTo(maxLoan) > 0) {
+                throw new BankikoException(
+                    "Loan amount exceeds your share-based limit of KES " + maxLoan +
+                    " (" + sharesHeld + " shares × KES " + group.getSharePrice() + " × " + group.getLoanMultiplier() + ")",
+                    HttpStatus.BAD_REQUEST);
+            }
+        }
 
         Loan loan = Loan.builder()
             .user(user)

@@ -39,6 +39,21 @@ public class SaccoGroup {
     @Builder.Default
     private int contributionDueDay = 5;
 
+    // Share configuration — applies to SACCO groups only
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal sharePrice = new BigDecimal("200.00");
+
+    @Builder.Default
+    private int minShares = 5;
+
+    @Builder.Default
+    private int maxShares = 1000;
+
+    // Loan ceiling = sharesHeld × loanMultiplier
+    @Builder.Default
+    private int loanMultiplier = 3;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -130,9 +130,22 @@ export interface LoanResponse {
   disbursedAt: string | null;
 }
 
+export interface ShareHoldingResponse {
+  groupId: string;
+  groupName: string;
+  sharesHeld: number;
+  totalInvested: number;
+  sharePrice: number;
+  loanMultiplier: number;
+  maxLoanEligible: number;
+  minShares: number;
+  maxShares: number;
+  memberName: string | null;
+}
+
 export interface MpesaTransactionResponse {
   id: string;
-  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL" | "LOAN_DISBURSEMENT";
+  type: "DEPOSIT" | "CONTRIBUTION" | "WITHDRAWAL" | "LOAN_DISBURSEMENT" | "SHARE_PURCHASE";
   amount: number;
   phone: string;
   status: "PENDING" | "SUCCESS" | "FAILED" | "TIMEOUT";
@@ -200,6 +213,18 @@ export const groupApi = {
     request<void>(`/api/groups/${groupId}/members/${targetUserId}`, { method: "POST" }),
   lookupUser: (q: string) =>
     request<{ id: string; fullName: string; phone: string; email: string }>(`/api/groups/users/lookup?q=${encodeURIComponent(q)}`),
+};
+
+export const shareApi = {
+  myHolding: (groupId: string) =>
+    request<ShareHoldingResponse>(`/api/shares/groups/${groupId}/my-holding`),
+  buyShares: (groupId: string, numberOfShares: number, phone: string) =>
+    request("/api/shares/buy", {
+      method: "POST",
+      body: JSON.stringify({ groupId, numberOfShares, phone }),
+    }),
+  register: (groupId: string) =>
+    request<ShareHoldingResponse[]>(`/api/shares/groups/${groupId}/register`),
 };
 
 export const contributionApi = {

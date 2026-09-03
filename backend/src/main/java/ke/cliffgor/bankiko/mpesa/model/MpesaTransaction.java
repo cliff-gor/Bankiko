@@ -68,7 +68,8 @@ public class MpesaTransaction {
         DEPOSIT,           // Member deposits into own wallet (STK push → C2B)
         CONTRIBUTION,      // Member contributes to group pool (STK push → C2B)
         WITHDRAWAL,        // Admin/member withdraws to M-Pesa (B2C)
-        LOAN_DISBURSEMENT  // Loan approved and credited to member wallet
+        LOAN_DISBURSEMENT, // Loan approved and credited to member wallet
+        SHARE_PURCHASE     // Member buys shares in a SACCO group
     }
 
     public enum TransactionStatus {

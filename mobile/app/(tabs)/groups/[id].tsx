@@ -14,7 +14,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Contacts from "expo-contacts/legacy";
 import Toast from "react-native-toast-message";
-import { groupApi, walletApi, GroupResponse } from "@/lib/api";
+import { groupApi, walletApi, shareApi, ShareHoldingResponse, GroupResponse } from "@/lib/api";
 import { storage } from "@/lib/storage";
 
 export default function GroupDetailScreen() {
@@ -31,11 +31,21 @@ export default function GroupDetailScreen() {
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [shareHolding, setShareHolding] = useState<ShareHoldingResponse | null>(null);
+  const [shareModal, setShareModal] = useState(false);
+  const [shareQty, setShareQty] = useState("1");
+  const [buyingShares, setBuyingShares] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const g = await groupApi.get(id);
       setGroup(g);
+      if (g.groupType === "SACCO") {
+        try {
+          const holding = await shareApi.myHolding(id);
+          setShareHolding(holding);
+        } catch { /* not critical */ }
+      }
     } catch {
       Toast.show({ type: "error", text1: "Failed to load group" });
     } finally {
@@ -98,6 +108,29 @@ export default function GroupDetailScreen() {
       Toast.show({ type: "error", text1: err?.detail ?? "Failed to add member" });
     } finally {
       setInviting(false);
+    }
+  }
+
+  async function handleBuyShares() {
+    const qty = parseInt(shareQty);
+    if (!qty || qty < 1) {
+      Toast.show({ type: "error", text1: "Enter a valid number of shares" });
+      return;
+    }
+    if (!phone) {
+      Toast.show({ type: "error", text1: "Enter your M-Pesa phone number" });
+      return;
+    }
+    setBuyingShares(true);
+    try {
+      await shareApi.buyShares(id, qty, phone);
+      Toast.show({ type: "success", text1: "STK Push sent — check your phone" });
+      setShareModal(false);
+      setShareQty("1");
+    } catch (err: any) {
+      Toast.show({ type: "error", text1: err?.detail ?? "Share purchase failed" });
+    } finally {
+      setBuyingShares(false);
     }
   }
 
@@ -177,6 +210,27 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
+        {/* Share balance card for SACCO groups */}
+        {group.groupType === "SACCO" && shareHolding !== null && (
+          <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: "#f5f3ff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#c4b5fd" }}>
+            <Text style={{ fontSize: 12, color: "#7c3aed", fontWeight: "600", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>My Shares</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <View>
+                <Text style={{ fontSize: 28, fontWeight: "800", color: "#4c1d95" }}>{shareHolding.sharesHeld}</Text>
+                <Text style={{ fontSize: 12, color: "#7c3aed" }}>shares held</Text>
+              </View>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: "#4c1d95" }}>
+                  Max loan: KES {shareHolding.maxLoanEligible.toLocaleString("en-KE")}
+                </Text>
+                <Text style={{ fontSize: 11, color: "#7c3aed" }}>
+                  KES {shareHolding.sharePrice.toLocaleString("en-KE")}/share · ×{shareHolding.loanMultiplier}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Action buttons */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -184,6 +238,12 @@ export default function GroupDetailScreen() {
               <Ionicons name="arrow-down-circle-outline" size={20} color="#fff" />
               <Text style={styles.contributeBtnText}>Contribute</Text>
             </TouchableOpacity>
+            {group.groupType === "SACCO" && (
+              <TouchableOpacity style={[styles.contributeBtn, { flex: 1, backgroundColor: "#7c3aed" }]} onPress={() => setShareModal(true)}>
+                <Ionicons name="trending-up-outline" size={20} color="#fff" />
+                <Text style={styles.contributeBtnText}>Buy Shares</Text>
+              </TouchableOpacity>
+            )}
             {group.role === "ADMIN" && (
               <TouchableOpacity style={[styles.contributeBtn, { flex: 1, backgroundColor: "#1d4ed8" }]} onPress={() => setInviteModal(true)}>
                 <Ionicons name="person-add-outline" size={20} color="#fff" />
@@ -260,6 +320,61 @@ export default function GroupDetailScreen() {
             <TouchableOpacity style={styles.cancelBtn} onPress={() => { setInviteModal(false); setInviteQuery(""); setFoundUser(null); }}>
               <Text style={styles.cancelBtnText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Buy Shares modal */}
+      <Modal visible={shareModal} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Buy Shares — {group.name}</Text>
+            {shareHolding && (
+              <View style={{ backgroundColor: "#f5f3ff", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, color: "#7c3aed" }}>
+                  Price: KES {shareHolding.sharePrice.toLocaleString("en-KE")} / share
+                </Text>
+                <Text style={{ fontSize: 13, color: "#7c3aed", marginTop: 2 }}>
+                  You hold {shareHolding.sharesHeld} shares (max {shareHolding.maxShares})
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.label}>Number of shares</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              placeholder="e.g. 5"
+              value={shareQty}
+              onChangeText={setShareQty}
+            />
+            {shareHolding && shareQty && parseInt(shareQty) > 0 && (
+              <Text style={{ fontSize: 13, color: "#6b7280", marginTop: -8, marginBottom: 12 }}>
+                Total: KES {(parseInt(shareQty) * shareHolding.sharePrice).toLocaleString("en-KE")}
+              </Text>
+            )}
+
+            <Text style={styles.label}>M-Pesa Phone</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="phone-pad"
+              placeholder="0712345678"
+              value={phone}
+              onChangeText={setPhone}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShareModal(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitBtn, { backgroundColor: "#7c3aed" }, buyingShares && styles.submitBtnDisabled]}
+                onPress={handleBuyShares}
+                disabled={buyingShares}
+              >
+                {buyingShares ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Pay via M-Pesa</Text>}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

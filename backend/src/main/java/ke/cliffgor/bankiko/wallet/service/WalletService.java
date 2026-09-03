@@ -12,6 +12,7 @@ import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.service.B2CService;
 import ke.cliffgor.bankiko.mpesa.service.StkPushService;
 import ke.cliffgor.bankiko.notification.service.SmsService;
+import ke.cliffgor.bankiko.share.service.ShareService;
 import ke.cliffgor.bankiko.wallet.dto.WalletBalanceResponse;
 import ke.cliffgor.bankiko.wallet.dto.WithdrawRequest;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class WalletService {
     private final B2CService b2cService;
     private final SmsService smsService;
     private final ContributionService contributionService;
+    private final ShareService shareService;
 
     /**
      * Fetches the member's wallet balance from Fineract.
@@ -114,6 +116,11 @@ public class WalletService {
 
         } else if (tx.getType() == MpesaTransaction.TransactionType.CONTRIBUTION && tx.getGroupId() != null) {
             contributionService.processGroupContribution(member, tx.getGroupId(), tx.getAmount(), tx.getMpesaReceiptNumber());
+
+        } else if (tx.getType() == MpesaTransaction.TransactionType.SHARE_PURCHASE) {
+            shareService.creditShares(tx);
+            smsService.send(tx.getPhone(),
+                "Bankiko: Share purchase of KES " + tx.getAmount() + " confirmed. Receipt: " + tx.getMpesaReceiptNumber());
         }
     }
 
