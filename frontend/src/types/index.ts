@@ -78,6 +78,10 @@ export interface LoanResponse {
   purpose: string | null;
   appliedAt: string;
   disbursedAt: string | null;
+  outstandingBalance?: number | null;
+  totalInterest?: number | null;
+  interestRate?: number | null;
+  interestType?: string | null;
 }
 
 export interface LoanRepayment {

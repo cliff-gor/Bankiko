@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AdminLoanSummary, getLoanSchedule, markLoanPaid, approveLoan, rejectLoan } from "@/lib/api";
@@ -53,21 +53,25 @@ export function AdminLoansClient({ loans: initial, token }: Props) {
   const { data: session } = useSession();
   const sessionToken = (session as any)?.accessToken ?? token;
 
+  const [loans, setLoans] = useState<AdminLoanSummary[]>(initial);
   const [tab, setTab] = useState<Tab>("All");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [schedules, setSchedules] = useState<Record<string, LoanRepayment[]>>({});
   const [schedLoading, setSchedLoading] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<{ id: string; action: string } | null>(null);
 
+  // Sync if parent server component re-renders with fresh data
+  useEffect(() => { setLoans(initial); }, [initial]);
+
   const filtered = TAB_FILTER[tab].length
-    ? initial.filter((l) => TAB_FILTER[tab].includes(l.status))
-    : initial;
+    ? loans.filter((l) => TAB_FILTER[tab].includes(l.status))
+    : loans;
 
   // Tab counts
   const counts = TABS.reduce<Record<Tab, number>>((acc, t) => {
     acc[t] = TAB_FILTER[t].length
-      ? initial.filter((l) => TAB_FILTER[t].includes(l.status)).length
-      : initial.length;
+      ? loans.filter((l) => TAB_FILTER[t].includes(l.status)).length
+      : loans.length;
     return acc;
   }, {} as Record<Tab, number>);
 
@@ -87,11 +91,26 @@ export function AdminLoansClient({ loans: initial, token }: Props) {
   async function handle(loanId: string, action: "approve" | "reject" | "mark-paid") {
     setActionLoading({ id: loanId, action });
     try {
-      if (action === "approve")   await approveLoan(sessionToken, loanId);
+      if (action === "approve")     await approveLoan(sessionToken, loanId);
       else if (action === "reject") await rejectLoan(sessionToken, loanId);
       else                          await markLoanPaid(sessionToken, loanId);
+
+      // Update local state immediately — don't wait for router.refresh()
+      const newStatus =
+        action === "approve"   ? "APPROVED" :
+        action === "reject"    ? "REJECTED" :
+        "CLOSED";
+      setLoans((prev) => prev.map((l) =>
+        l.id === loanId
+          ? { ...l, status: newStatus, outstandingBalance: action === "mark-paid" ? 0 : l.outstandingBalance }
+          : l
+      ));
+      // Also refresh server state in background for next visit
       router.refresh();
-    } catch {}
+    } catch (e: any) {
+      // Show error in console; could add a toast here
+      console.error("Loan action failed:", e);
+    }
     setActionLoading(null);
   }
 
@@ -134,6 +153,8 @@ export function AdminLoansClient({ loans: initial, token }: Props) {
         <div className="space-y-2">
           {filtered.map((l) => {
             const totalAmount = l.principal + (l.totalInterest ?? 0);
+            // Only compute progress when the backend has an actual outstanding balance value
+            const hasBalance = l.outstandingBalance != null;
             const outstanding = l.outstandingBalance ?? 0;
             const paid = Math.max(0, totalAmount - outstanding);
             const pct = totalAmount > 0 ? Math.round((paid / totalAmount) * 100) : 0;
@@ -170,8 +191,8 @@ export function AdminLoansClient({ loans: initial, token }: Props) {
                       {l.disbursedAt && ` · Disbursed ${new Date(l.disbursedAt).toLocaleDateString("en-KE")}`}
                     </p>
 
-                    {/* Repayment progress (active loans only) */}
-                    {isActive && totalAmount > 0 && (
+                    {/* Repayment progress (active loans with a known outstanding balance) */}
+                    {isActive && hasBalance && totalAmount > 0 && (
                       <div className="space-y-1 pt-0.5">
                         <div className="flex justify-between text-xs">
                           <span className="text-muted-foreground">

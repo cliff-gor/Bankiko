@@ -243,7 +243,13 @@ public class LoanService {
             log.warn("Fineract repayment failed, recording locally: {}", e.getMessage());
         }
 
-        // Mark the next pending/overdue installment as paid, deduct from outstanding balance
+        // Ensure outstanding balance is initialised (may be null for legacy loans)
+        if (loan.getOutstandingBalance() == null) {
+            BigDecimal totalInterest = loan.getTotalInterest() != null ? loan.getTotalInterest() : BigDecimal.ZERO;
+            loan.setOutstandingBalance(loan.getPrincipal().add(totalInterest));
+        }
+
+        // Mark the next pending/overdue installment as paid, deduct actual payment from outstanding balance
         repaymentRepository.findFirstByLoanIdAndStatusOrderByInstallmentNo(loanId, LoanRepayment.RepaymentStatus.PENDING)
             .or(() -> repaymentRepository.findFirstByLoanIdAndStatusOrderByInstallmentNo(loanId, LoanRepayment.RepaymentStatus.OVERDUE))
             .ifPresent(inst -> {
@@ -252,17 +258,15 @@ public class LoanService {
                 inst.setPaidAt(Instant.now());
                 repaymentRepository.save(inst);
 
-                // Reduce outstanding balance
-                if (loan.getOutstandingBalance() != null) {
-                    BigDecimal newBalance = loan.getOutstandingBalance().subtract(inst.getAmountDue()).max(BigDecimal.ZERO);
-                    loan.setOutstandingBalance(newBalance);
-                }
+                // Deduct the actual amount paid from the outstanding balance
+                BigDecimal newBalance = loan.getOutstandingBalance().subtract(amount).max(BigDecimal.ZERO);
+                loan.setOutstandingBalance(newBalance);
 
                 // If no PENDING or OVERDUE installments remain, close the loan
                 long remaining = repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId)
                     .stream().filter(i -> i.getStatus() == LoanRepayment.RepaymentStatus.PENDING
                         || i.getStatus() == LoanRepayment.RepaymentStatus.OVERDUE).count();
-                if (remaining == 0) {
+                if (remaining == 0 || newBalance.compareTo(BigDecimal.ZERO) == 0) {
                     loan.setStatus("CLOSED");
                     loan.setOutstandingBalance(BigDecimal.ZERO);
                 }
