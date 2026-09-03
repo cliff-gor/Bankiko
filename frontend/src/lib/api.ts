@@ -235,6 +235,83 @@ export async function getAdminLoans(token: string) {
   return request<{ id: string; userId: string; memberName: string; groupName: string; principal: number; repaymentMonths: number; status: string; purpose: string | null; appliedAt: string; disbursedAt: string | null }[]>("/api/admin/loans", {}, token);
 }
 
+export async function repayLoan(token: string, loanId: string, amount: number) {
+  return request<void>(`/api/loans/${loanId}/repay`, {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  }, token);
+}
+
+// ── Dividends ───────────────────────────────────────────────────────────────
+
+export interface DividendCycle {
+  id: string;
+  groupId: string;
+  groupName: string;
+  cycleYear: number;
+  totalProfit: number;
+  status: "DRAFT" | "DECLARED" | "PAID";
+  createdAt: string;
+}
+
+export interface DividendAllocation {
+  id: string;
+  memberName: string;
+  shares: number;
+  amount: number;
+  paid: boolean;
+}
+
+export interface MyDividend {
+  cycleId: string;
+  groupName: string;
+  cycleYear: number;
+  shares: number;
+  amount: number;
+  paid: boolean;
+}
+
+export async function getDividendCycles(token: string, groupId: string) {
+  return request<DividendCycle[]>(`/api/dividends/groups/${groupId}/cycles`, {}, token);
+}
+
+export async function getDividendAllocations(token: string, cycleId: string) {
+  return request<DividendAllocation[]>(`/api/dividends/cycles/${cycleId}/allocations`, {}, token);
+}
+
+export async function getMyDividends(token: string) {
+  return request<MyDividend[]>("/api/dividends/my", {}, token);
+}
+
+export async function declareDividend(token: string, groupId: string, totalProfit: number, year?: number) {
+  return request<DividendCycle>(`/api/dividends/groups/${groupId}/declare`, {
+    method: "POST",
+    body: JSON.stringify({ totalProfit, year }),
+  }, token);
+}
+
+export async function payDividendCycle(token: string, cycleId: string) {
+  return request<void>(`/api/dividends/cycles/${cycleId}/pay`, { method: "POST" }, token);
+}
+
+// ── Reports ─────────────────────────────────────────────────────────────────
+
+export async function downloadMemberStatement(token: string): Promise<Blob> {
+  const res = await fetch(`${BASE}/api/reports/statement/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to download statement");
+  return res.blob();
+}
+
+export async function downloadSasraReport(token: string, groupId: string, year: number, month: number): Promise<Blob> {
+  const res = await fetch(`${BASE}/api/reports/sasra/groups/${groupId}/monthly?year=${year}&month=${month}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to generate report");
+  return res.blob();
+}
+
 // ── Invites ────────────────────────────────────────────────────────────────
 
 export interface InviteDetails {

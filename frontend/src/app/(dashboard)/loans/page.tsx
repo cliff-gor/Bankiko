@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { getGroups, getLoans, getPendingLoans } from "@/lib/api";
 import { ApplyLoanDialog } from "@/components/loans/ApplyLoanDialog";
 import { AdminLoanActions } from "@/components/loans/AdminLoanActions";
+import { LoansClient } from "@/components/loans/LoansClient";
 import { GroupResponse, LoanResponse } from "@/types";
 import { CreditCard } from "lucide-react";
 import { formatKES } from "@/lib/utils";
@@ -84,29 +85,7 @@ export default async function LoansPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {loans.map((l) => (
-              <div key={l.id} className="border rounded-xl p-4 flex items-center gap-4">
-                <div className="flex-1 space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{formatKES(l.principal)}</p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOR[l.status] ?? "bg-gray-100 text-gray-500"}`}>
-                      {STATUS_LABEL[l.status] ?? l.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {l.groupName} · {l.repaymentMonths} months
-                    {l.purpose ? ` · ${l.purpose}` : ""}
-                  </p>
-                  {l.disbursedAt && (
-                    <p className="text-xs text-muted-foreground">
-                      Disbursed {new Date(l.disbursedAt).toLocaleDateString("en-KE")}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          <LoansClient loans={loans} token={token} />
         )}
       </section>
     </div>
