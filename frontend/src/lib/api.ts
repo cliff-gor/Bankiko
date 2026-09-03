@@ -1,4 +1,4 @@
-import { AuthResponse, WalletBalance, GroupResponse, ContributionResponse, MpesaTransaction, LoanResponse, MemberResponse, UserSummary, Page } from "@/types";
+import { AuthResponse, WalletBalance, GroupResponse, ContributionResponse, MpesaTransaction, LoanResponse, LoanRepayment, StatementEntry, ShareHoldingResponse, MemberResponse, UserSummary, Page } from "@/types";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth";
 
@@ -194,6 +194,22 @@ export async function adminAddMemberToGroup(token: string, groupId: string, user
 
 export async function getAdminTransactions(token: string, page = 0) {
   return request<{ content: { id: string; userId: string; type: string; amount: number; status: string; mpesaReceiptNumber: string | null; phone: string; createdAt: string }[]; totalElements: number }>(`/api/admin/transactions?page=${page}&size=30`, {}, token);
+}
+
+export async function getLoanSchedule(token: string, loanId: string) {
+  return request<LoanRepayment[]>(`/api/loans/${loanId}/schedule`, {}, token);
+}
+
+export async function getStatement(token: string) {
+  return request<StatementEntry[]>("/api/wallet/statement", {}, token);
+}
+
+export async function getShareHolding(token: string, groupId: string) {
+  return request<ShareHoldingResponse>(`/api/shares/groups/${groupId}/my-holding`, {}, token);
+}
+
+export async function getShareRegister(token: string, groupId: string) {
+  return request<ShareHoldingResponse[]>(`/api/shares/groups/${groupId}/register`, {}, token);
 }
 
 export async function getAdminLoans(token: string) {

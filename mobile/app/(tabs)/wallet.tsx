@@ -32,9 +32,11 @@ const STATUS_COLOR: Record<string, string> = {
   TIMEOUT: "#6b7280",
 };
 const TYPE_LABEL: Record<string, string> = {
-  DEPOSIT:      "Deposit",
-  WITHDRAWAL:   "Withdrawal",
-  CONTRIBUTION: "Contribution",
+  DEPOSIT:           "Deposit",
+  WITHDRAWAL:        "Withdrawal",
+  CONTRIBUTION:      "Contribution",
+  LOAN_DISBURSEMENT: "Loan Disbursement",
+  SHARE_PURCHASE:    "Share Purchase",
 };
 
 export default function WalletScreen() {

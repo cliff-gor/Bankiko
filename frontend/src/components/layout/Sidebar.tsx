@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LayoutDashboard, Wallet, Users, CreditCard, LogOut, ShieldCheck, Receipt } from "lucide-react";
+import { LayoutDashboard, Wallet, Users, CreditCard, LogOut, ShieldCheck, Receipt, TrendingUp, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const memberNav = [
@@ -11,6 +11,7 @@ const memberNav = [
   { href: "/wallet",    label: "Wallet",      icon: Wallet },
   { href: "/groups",    label: "Groups",      icon: Users },
   { href: "/loans",     label: "Loans",       icon: CreditCard },
+  { href: "/statement", label: "Statement",   icon: FileText },
 ];
 
 const adminNav = [
@@ -18,6 +19,7 @@ const adminNav = [
   { href: "/admin/users",          label: "Members",      icon: Users },
   { href: "/admin/groups",         label: "Groups",       icon: Users },
   { href: "/admin/loans",          label: "Loans",        icon: CreditCard },
+  { href: "/admin/shares",         label: "Share Register", icon: TrendingUp },
   { href: "/admin/transactions",   label: "Transactions", icon: Receipt },
 ];
 

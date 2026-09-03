@@ -13,6 +13,10 @@ import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.member.service.MemberService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.repository.MpesaTransactionRepository;
+import ke.cliffgor.bankiko.contribution.model.Contribution;
+import ke.cliffgor.bankiko.contribution.repository.ContributionRepository;
+import ke.cliffgor.bankiko.loan.model.LoanRepayment;
+import ke.cliffgor.bankiko.loan.repository.LoanRepaymentRepository;
 import ke.cliffgor.bankiko.notification.service.SmsService;
 import ke.cliffgor.bankiko.share.repository.ShareHoldingRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +26,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,6 +46,8 @@ public class LoanService {
     private final SmsService smsService;
     private final MpesaTransactionRepository transactionRepository;
     private final ShareHoldingRepository shareHoldingRepository;
+    private final ContributionRepository contributionRepository;
+    private final LoanRepaymentRepository repaymentRepository;
 
     @Transactional(readOnly = true)
     public List<LoanResponse> listForUser(UUID userId) {
@@ -57,6 +66,16 @@ public class LoanService {
         Member member = memberService.requireActiveByUserId(user.getId());
         SaccoGroup group = groupService.requireGroup(request.getGroupId());
         groupService.requireMembership(group, user.getId());
+
+        // SACCO groups require at least 3 months of contributions before borrowing
+        if (group.getGroupType() == SaccoGroup.GroupType.SACCO) {
+            long months = contributionRepository.countByMemberAndGroup(member, group);
+            if (months < 3) {
+                throw new BankikoException(
+                    "You need at least 3 months of contributions to apply for a SACCO loan. You have " + months + ".",
+                    HttpStatus.BAD_REQUEST);
+            }
+        }
 
         // SACCO groups enforce share-based loan eligibility
         if (group.getGroupType() == SaccoGroup.GroupType.SACCO) {
@@ -120,6 +139,9 @@ public class LoanService {
         loan.setDisbursedAt(Instant.now());
         loan = loanRepository.save(loan);
 
+        // Generate monthly repayment schedule
+        generateRepaymentSchedule(loan);
+
         // Record disbursement in transaction history so it shows in member's wallet
         transactionRepository.save(MpesaTransaction.builder()
             .user(loan.getUser())
@@ -169,12 +191,50 @@ public class LoanService {
             log.warn("Fineract repayment failed, recording locally: {}", e.getMessage());
         }
 
+        // Mark the next pending installment as paid
+        repaymentRepository.findFirstByLoanIdAndStatusOrderByInstallmentNo(loanId, LoanRepayment.RepaymentStatus.PENDING)
+            .ifPresent(inst -> {
+                inst.setAmountPaid(amount);
+                inst.setStatus(LoanRepayment.RepaymentStatus.PAID);
+                inst.setPaidAt(Instant.now());
+                repaymentRepository.save(inst);
+
+                // If all installments are paid, close the loan
+                long remaining = repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId)
+                    .stream().filter(i -> i.getStatus() == LoanRepayment.RepaymentStatus.PENDING).count();
+                if (remaining == 0) {
+                    loan.setStatus("CLOSED");
+                    loanRepository.save(loan);
+                }
+            });
+
         try {
             smsService.send(user.getPhone(),
                 "Bankiko: KES " + amount + " loan repayment received. Thank you.");
         } catch (Exception ignored) {}
 
         log.info("Loan repayment: userId={} loanId={} amount={}", user.getId(), loanId, amount);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoanRepayment> listRepayments(UUID loanId) {
+        return repaymentRepository.findByLoanIdOrderByInstallmentNo(loanId);
+    }
+
+    private void generateRepaymentSchedule(Loan loan) {
+        BigDecimal monthly = loan.getPrincipal().divide(
+            BigDecimal.valueOf(loan.getRepaymentMonths()), 2, RoundingMode.HALF_UP);
+        LocalDate base = LocalDate.now();
+        List<LoanRepayment> schedule = new ArrayList<>();
+        for (int i = 1; i <= loan.getRepaymentMonths(); i++) {
+            schedule.add(LoanRepayment.builder()
+                .loan(loan)
+                .installmentNo(i)
+                .dueDate(base.plusMonths(i))
+                .amountDue(monthly)
+                .build());
+        }
+        repaymentRepository.saveAll(schedule);
     }
 
     private LoanResponse toResponse(Loan loan) {

@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import ke.cliffgor.bankiko.auth.model.User;
 import ke.cliffgor.bankiko.loan.dto.LoanApplicationRequest;
 import ke.cliffgor.bankiko.loan.dto.LoanResponse;
+import ke.cliffgor.bankiko.loan.model.LoanRepayment;
 import ke.cliffgor.bankiko.loan.service.LoanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -66,6 +67,12 @@ public class LoanController {
         @AuthenticationPrincipal User adminUser
     ) {
         return ResponseEntity.ok(loanService.reject(loanId, adminUser));
+    }
+
+    @Operation(summary = "Get repayment schedule for a loan")
+    @GetMapping("/{loanId}/schedule")
+    public ResponseEntity<List<LoanRepayment>> schedule(@PathVariable UUID loanId) {
+        return ResponseEntity.ok(loanService.listRepayments(loanId));
     }
 
     @Operation(summary = "Make a loan repayment")

@@ -18,4 +18,6 @@ public interface ContributionRepository extends JpaRepository<Contribution, UUID
     Page<Contribution> findByGroupOrderByPaidAtDesc(SaccoGroup group, Pageable pageable);
 
     List<Contribution> findByMemberAndGroupOrderByPaidAtDesc(Member member, SaccoGroup group);
+
+    long countByMemberAndGroup(Member member, SaccoGroup group);
 }

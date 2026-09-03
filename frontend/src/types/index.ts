@@ -69,6 +69,39 @@ export interface LoanResponse {
   disbursedAt: string | null;
 }
 
+export interface LoanRepayment {
+  id: string;
+  installmentNo: number;
+  dueDate: string;
+  amountDue: number;
+  amountPaid: number;
+  status: "PENDING" | "PAID" | "OVERDUE";
+  paidAt: string | null;
+}
+
+export interface StatementEntry {
+  id: string;
+  type: string;
+  description: string;
+  amount: number;
+  status: string;
+  reference: string | null;
+  createdAt: string;
+}
+
+export interface ShareHoldingResponse {
+  groupId: string;
+  groupName: string;
+  sharesHeld: number;
+  totalInvested: number;
+  sharePrice: number;
+  loanMultiplier: number;
+  maxLoanEligible: number;
+  minShares: number;
+  maxShares: number;
+  memberName: string | null;
+}
+
 export interface Page<T> {
   content: T[];
   totalElements: number;

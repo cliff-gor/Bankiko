@@ -51,6 +51,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="statement"
+        options={{
+          title: "Statement",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "document-text" : "document-text-outline"} color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

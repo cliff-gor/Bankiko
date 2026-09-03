@@ -130,6 +130,26 @@ export interface LoanResponse {
   disbursedAt: string | null;
 }
 
+export interface LoanRepayment {
+  id: string;
+  installmentNo: number;
+  dueDate: string;
+  amountDue: number;
+  amountPaid: number;
+  status: "PENDING" | "PAID" | "OVERDUE";
+  paidAt: string | null;
+}
+
+export interface StatementEntry {
+  id: string;
+  type: string;
+  description: string;
+  amount: number;
+  status: string;
+  reference: string | null;
+  createdAt: string;
+}
+
 export interface ShareHoldingResponse {
   groupId: string;
   groupName: string;
@@ -245,4 +265,10 @@ export const loanApi = {
     }),
   repay: (loanId: string, amount: number) =>
     request<void>(`/api/loans/${loanId}/repay?amount=${amount}`, { method: "POST" }),
+  schedule: (loanId: string) =>
+    request<LoanRepayment[]>(`/api/loans/${loanId}/schedule`),
+};
+
+export const statementApi = {
+  list: () => request<StatementEntry[]>("/api/wallet/statement"),
 };

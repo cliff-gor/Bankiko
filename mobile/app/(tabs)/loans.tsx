@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
-import { loanApi, groupApi, memberApi, LoanResponse, GroupResponse } from "@/lib/api";
+import { loanApi, groupApi, memberApi, LoanResponse, LoanRepayment, GroupResponse } from "@/lib/api";
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING_APPROVAL: "#d97706",
@@ -47,6 +47,8 @@ export default function LoansScreen() {
   const [applying, setApplying] = useState(false);
   const [repayAmount, setRepayAmount] = useState("");
   const [repaying, setRepaying] = useState(false);
+  const [scheduleMap, setScheduleMap] = useState<Record<string, LoanRepayment[]>>({});
+  const [expandedLoan, setExpandedLoan] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -65,6 +67,17 @@ export default function LoansScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function toggleSchedule(loanId: string) {
+    if (expandedLoan === loanId) { setExpandedLoan(null); return; }
+    setExpandedLoan(loanId);
+    if (!scheduleMap[loanId]) {
+      try {
+        const schedule = await loanApi.schedule(loanId);
+        setScheduleMap(prev => ({ ...prev, [loanId]: schedule }));
+      } catch { /* ignore */ }
+    }
+  }
 
   async function handleApply() {
     if (!selectedGroup || !principal) {
@@ -152,10 +165,44 @@ export default function LoansScreen() {
                 )}
                 {l.purpose && <Text style={styles.cardMeta}>Purpose: {l.purpose}</Text>}
                 {isActive && (
-                  <TouchableOpacity style={styles.repayBtn} onPress={() => { setRepayModal(l); setRepayAmount(""); }}>
-                    <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />
-                    <Text style={styles.repayBtnText}>Make a repayment</Text>
-                  </TouchableOpacity>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TouchableOpacity style={styles.repayBtn} onPress={() => { setRepayModal(l); setRepayAmount(""); }}>
+                        <Ionicons name="arrow-up-circle-outline" size={16} color="#fff" />
+                        <Text style={styles.repayBtnText}>Repay</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.repayBtn, { backgroundColor: "#1d4ed8" }]}
+                        onPress={() => toggleSchedule(l.id)}
+                      >
+                        <Ionicons name="calendar-outline" size={16} color="#fff" />
+                        <Text style={styles.repayBtnText}>{expandedLoan === l.id ? "Hide" : "Schedule"}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {expandedLoan === l.id && scheduleMap[l.id] && (
+                      <View style={{ backgroundColor: "#f8fafc", borderRadius: 10, padding: 12, gap: 6 }}>
+                        {scheduleMap[l.id].map((inst) => (
+                          <View key={inst.id} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontSize: 12, color: "#374151" }}>#{inst.installmentNo} · {inst.dueDate}</Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <Text style={{ fontSize: 12, fontWeight: "600", color: "#111827" }}>
+                                KES {Number(inst.amountDue).toLocaleString("en-KE")}
+                              </Text>
+                              <View style={{
+                                backgroundColor: inst.status === "PAID" ? "#dcfce7" : inst.status === "OVERDUE" ? "#fee2e2" : "#fef3c7",
+                                borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2
+                              }}>
+                                <Text style={{
+                                  fontSize: 10, fontWeight: "600",
+                                  color: inst.status === "PAID" ? "#16a34a" : inst.status === "OVERDUE" ? "#dc2626" : "#92400e"
+                                }}>{inst.status}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 )}
               </View>
             );
