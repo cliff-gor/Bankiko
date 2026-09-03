@@ -15,6 +15,7 @@ const schema = z.object({
   description: z.string().optional(),
   monthlyContributionTarget: z.coerce.number().min(0, "Enter a valid amount"),
   contributionDueDay: z.coerce.number().min(1).max(28),
+  groupType: z.enum(["CHAMA", "SACCO"]),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -27,7 +28,7 @@ export function CreateGroupDialog() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { contributionDueDay: 5 },
+    defaultValues: { contributionDueDay: 5, groupType: "CHAMA" },
   });
 
   async function onSubmit(data: FormData) {
@@ -67,6 +68,27 @@ export function CreateGroupDialog() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              {/* Group type picker */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Group type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["CHAMA", "SACCO"] as const).map((type) => (
+                    <label key={type} className="cursor-pointer">
+                      <input type="radio" value={type} {...register("groupType")} className="sr-only" />
+                      <div className={`border-2 rounded-lg p-3 text-center transition-colors ${
+                        // watch via register — use a controlled approach via Controller in real app, but this works for display
+                        "has-[:checked]:border-primary has-[:checked]:bg-primary/5 border-border"
+                      }`}>
+                        <p className="font-semibold text-sm">{type === "CHAMA" ? "Chama" : "SACCO"}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {type === "CHAMA" ? "Informal group · Active immediately" : "Registered SACCO · Requires approval"}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Group name</label>
                 <input

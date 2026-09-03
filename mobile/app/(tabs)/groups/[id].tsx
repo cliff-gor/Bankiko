@@ -167,6 +167,16 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
+        {/* Pending approval banner */}
+        {group.status === "PENDING_APPROVAL" && (
+          <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: "#fef3c7", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#fcd34d" }}>
+            <Text style={{ fontWeight: "600", color: "#92400e", fontSize: 14 }}>Awaiting admin approval</Text>
+            <Text style={{ color: "#78350f", fontSize: 12, marginTop: 4 }}>
+              This SACCO group is pending review. You can invite members but group activities start after approval.
+            </Text>
+          </View>
+        )}
+
         {/* Action buttons */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", gap: 10 }}>

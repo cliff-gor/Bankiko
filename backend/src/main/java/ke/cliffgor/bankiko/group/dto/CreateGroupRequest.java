@@ -1,6 +1,7 @@
 package ke.cliffgor.bankiko.group.dto;
 
 import jakarta.validation.constraints.*;
+import ke.cliffgor.bankiko.group.model.SaccoGroup;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -19,4 +20,7 @@ public class CreateGroupRequest {
 
     @Min(1) @Max(28)
     private int contributionDueDay = 5;
+
+    @NotNull
+    private SaccoGroup.GroupType groupType = SaccoGroup.GroupType.CHAMA;
 }

@@ -106,6 +106,7 @@ export interface GroupResponse {
   memberCount: number;
   role: string;
   status: string;
+  groupType: "CHAMA" | "SACCO";
 }
 
 export interface ContributionResponse {
@@ -185,10 +186,10 @@ export const groupApi = {
   list: () =>
     request<{ content: GroupResponse[] }>("/api/groups?page=0&size=50").then((p) => p.content),
   get: (id: string) => request<GroupResponse>(`/api/groups/${id}`),
-  create: (name: string, description: string, monthlyContributionTarget: number, contributionDueDay: number) =>
+  create: (name: string, description: string, monthlyContributionTarget: number, contributionDueDay: number, groupType: "CHAMA" | "SACCO" = "CHAMA") =>
     request<GroupResponse>("/api/groups", {
       method: "POST",
-      body: JSON.stringify({ name, description, monthlyContributionTarget, contributionDueDay }),
+      body: JSON.stringify({ name, description, monthlyContributionTarget, contributionDueDay, groupType }),
     }),
   contribute: (groupId: string, amount: number, phone: string) =>
     request("/api/wallet/deposit", {

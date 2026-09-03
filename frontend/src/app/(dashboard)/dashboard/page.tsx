@@ -24,11 +24,12 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
     getAdminLoans(token),
   ]);
 
-  const users   = usersRes.status   === "fulfilled" ? usersRes.value   : null;
-  const groups  = groupsRes.status  === "fulfilled" ? groupsRes.value  : null;
-  const pending = pendingRes.status === "fulfilled" ? pendingRes.value : [];
-  const loans   = loansRes.status   === "fulfilled" ? loansRes.value   : [];
-  const activeLoans = loans.filter((l) => l.status === "ACTIVE").length;
+  const users        = usersRes.status   === "fulfilled" ? usersRes.value   : null;
+  const groups       = groupsRes.status  === "fulfilled" ? groupsRes.value  : null;
+  const pending      = pendingRes.status === "fulfilled" ? pendingRes.value : [];
+  const loans        = loansRes.status   === "fulfilled" ? loansRes.value   : [];
+  const activeLoans  = loans.filter((l) => l.status === "ACTIVE").length;
+  const pendingGroups = groups?.filter((g) => g.status === "PENDING_APPROVAL") ?? [];
 
   return (
     <div className="space-y-6">
@@ -45,7 +46,7 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard icon={<Users className="w-5 h-5 text-blue-500" />}
           label="Total Members" value={users ? String(users.totalElements) : "—"}
           sub="Registered users" href="/admin/users" />
@@ -55,6 +56,9 @@ async function AdminDashboard({ token, session }: { token: string; session: any 
         <StatCard icon={<Clock className="w-5 h-5 text-amber-500" />}
           label="Pending Loans" value={String(pending.length)}
           sub="Awaiting approval" href="/admin/loans" highlight={pending.length > 0} />
+        <StatCard icon={<Clock className="w-5 h-5 text-purple-500" />}
+          label="Pending Groups" value={String(pendingGroups.length)}
+          sub="SACCO approvals" href="/admin/groups" highlight={pendingGroups.length > 0} />
         <StatCard icon={<TrendingUp className="w-5 h-5 text-primary" />}
           label="Active Loans" value={String(activeLoans)}
           sub="Disbursed loans" href="/admin/loans" />

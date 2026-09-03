@@ -40,6 +40,11 @@ public class SaccoGroup {
     private int contributionDueDay = 5;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private GroupType groupType = GroupType.CHAMA;
+
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private GroupStatus status = GroupStatus.ACTIVE;
 
@@ -50,11 +55,18 @@ public class SaccoGroup {
     @Builder.Default
     private Instant createdAt = Instant.now();
 
+    private Instant approvedAt;
+    private String rejectedReason;
+
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<GroupMember> members = new ArrayList<>();
 
+    public enum GroupType {
+        CHAMA, SACCO
+    }
+
     public enum GroupStatus {
-        ACTIVE, SUSPENDED, CLOSED
+        PENDING_APPROVAL, ACTIVE, SUSPENDED, CLOSED
     }
 }

@@ -90,6 +90,7 @@ export async function createGroup(token: string, body: {
   description?: string;
   monthlyContributionTarget: number;
   contributionDueDay: number;
+  groupType: "CHAMA" | "SACCO";
 }) {
   return request<GroupResponse>("/api/groups", {
     method: "POST",
@@ -169,8 +170,22 @@ export async function setUserRole(token: string, userId: string, role: string) {
   }, token);
 }
 
+export type AdminGroupSummary = { id: string; name: string; description: string; monthlyContributionTarget: number; groupType: string; status: string; memberCount: number };
+
 export async function getAdminGroups(token: string) {
-  return request<{ id: string; name: string; description: string; monthlyContributionTarget: number; status: string; memberCount: number }[]>("/api/admin/groups", {}, token);
+  return request<AdminGroupSummary[]>("/api/admin/groups", {}, token);
+}
+
+export async function getAdminPendingGroups(token: string) {
+  return request<AdminGroupSummary[]>("/api/admin/groups/pending", {}, token);
+}
+
+export async function adminApproveGroup(token: string, groupId: string) {
+  return request<void>(`/api/admin/groups/${groupId}/approve`, { method: "POST" }, token);
+}
+
+export async function adminRejectGroup(token: string, groupId: string, reason?: string) {
+  return request<void>(`/api/admin/groups/${groupId}/reject?${reason ? `reason=${encodeURIComponent(reason)}` : ""}`, { method: "POST" }, token);
 }
 
 export async function adminAddMemberToGroup(token: string, groupId: string, userId: string) {

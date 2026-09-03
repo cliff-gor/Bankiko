@@ -22,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
@@ -53,12 +54,22 @@ public class GroupService {
             log.warn("Fineract unavailable — creating group without pooled savings account: {}", e.getMessage());
         }
 
+        SaccoGroup.GroupType groupType = request.getGroupType() != null
+            ? request.getGroupType() : SaccoGroup.GroupType.CHAMA;
+
+        // SACCO groups require admin approval before going active
+        SaccoGroup.GroupStatus initialStatus = groupType == SaccoGroup.GroupType.SACCO
+            ? SaccoGroup.GroupStatus.PENDING_APPROVAL
+            : SaccoGroup.GroupStatus.ACTIVE;
+
         SaccoGroup group = SaccoGroup.builder()
             .name(request.getName())
             .description(request.getDescription())
             .monthlyContributionTarget(request.getMonthlyContributionTarget())
             .contributionDueDay(request.getContributionDueDay())
             .fineractGroupAccountId(fineractAccountId)
+            .groupType(groupType)
+            .status(initialStatus)
             .createdBy(creator)
             .build();
 
@@ -109,6 +120,38 @@ public class GroupService {
         return toResponse(g, member);
     }
 
+    @Transactional
+    public GroupResponse approveGroup(UUID groupId) {
+        SaccoGroup group = requireGroup(groupId);
+        if (group.getStatus() != SaccoGroup.GroupStatus.PENDING_APPROVAL) {
+            throw new BankikoException("Group is not pending approval", HttpStatus.CONFLICT);
+        }
+        group.setStatus(SaccoGroup.GroupStatus.ACTIVE);
+        group.setApprovedAt(Instant.now());
+        groupRepository.save(group);
+        log.info("Group approved: id={}", groupId);
+        return toResponse(group, null);
+    }
+
+    @Transactional
+    public GroupResponse rejectGroup(UUID groupId, String reason) {
+        SaccoGroup group = requireGroup(groupId);
+        if (group.getStatus() != SaccoGroup.GroupStatus.PENDING_APPROVAL) {
+            throw new BankikoException("Group is not pending approval", HttpStatus.CONFLICT);
+        }
+        group.setStatus(SaccoGroup.GroupStatus.CLOSED);
+        group.setRejectedReason(reason);
+        groupRepository.save(group);
+        log.info("Group rejected: id={}", groupId);
+        return toResponse(group, null);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<GroupResponse> listPendingGroups() {
+        return groupRepository.findByStatus(SaccoGroup.GroupStatus.PENDING_APPROVAL)
+            .stream().map(g -> toResponse(g, null)).toList();
+    }
+
     public SaccoGroup requireGroup(UUID groupId) {
         return groupRepository.findById(groupId)
             .orElseThrow(() -> new ResourceNotFoundException("Group", groupId));
@@ -141,6 +184,7 @@ public class GroupService {
             .monthlyContributionTarget(g.getMonthlyContributionTarget())
             .contributionDueDay(g.getContributionDueDay())
             .fineractGroupAccountId(g.getFineractGroupAccountId())
+            .groupType(g.getGroupType().name())
             .status(g.getStatus().name())
             .role(role)
             .memberCount(g.getMembers().size())

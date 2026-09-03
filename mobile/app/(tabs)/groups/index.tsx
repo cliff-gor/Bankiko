@@ -26,6 +26,7 @@ export default function GroupsScreen() {
   const [description, setDescription] = useState("");
   const [monthlyTarget, setMonthlyTarget] = useState("");
   const [dueDay, setDueDay] = useState("5");
+  const [groupType, setGroupType] = useState<"CHAMA" | "SACCO">("CHAMA");
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
@@ -50,10 +51,10 @@ export default function GroupsScreen() {
 
     setCreating(true);
     try {
-      await groupApi.create(name.trim(), description.trim(), target, day);
+      await groupApi.create(name.trim(), description.trim(), target, day, groupType);
       Toast.show({ type: "success", text1: "Group created!" });
       setModalVisible(false);
-      setName(""); setDescription(""); setMonthlyTarget(""); setDueDay("5");
+      setName(""); setDescription(""); setMonthlyTarget(""); setDueDay("5"); setGroupType("CHAMA");
       load();
     } catch (err: any) {
       Toast.show({ type: "error", text1: err?.detail ?? "Failed to create group" });
@@ -108,7 +109,11 @@ export default function GroupsScreen() {
                 {g.description ? <Text style={styles.cardDesc}>{g.description}</Text> : null}
                 <View style={styles.cardMeta}>
                   <Text style={styles.metaChip}>{g.memberCount} members</Text>
+                  <Text style={[styles.metaChip, g.groupType === "SACCO" && styles.metaChipSacco]}>{g.groupType}</Text>
                   <Text style={[styles.metaChip, g.role === "ADMIN" && styles.metaChipAdmin]}>{g.role}</Text>
+                  {g.status === "PENDING_APPROVAL" && (
+                    <Text style={styles.metaChipPending}>Pending</Text>
+                  )}
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#d1d5db" />
@@ -122,6 +127,22 @@ export default function GroupsScreen() {
         <View style={styles.overlay}>
           <View style={[styles.modal, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
             <Text style={styles.modalTitle}>Create a new group</Text>
+
+            <Text style={styles.label}>Group type</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+              {(["CHAMA", "SACCO"] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.typeBtn, groupType === t && styles.typeBtnActive]}
+                  onPress={() => setGroupType(t)}
+                >
+                  <Text style={[styles.typeBtnLabel, groupType === t && styles.typeBtnLabelActive]}>{t}</Text>
+                  <Text style={[styles.typeBtnSub, groupType === t && { color: "#fff" }]}>
+                    {t === "CHAMA" ? "Active immediately" : "Requires approval"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Text style={styles.label}>Group name</Text>
             <TextInput
@@ -199,7 +220,14 @@ const styles = StyleSheet.create({
   cardDesc:       { fontSize: 13, color: "#6b7280", marginTop: 2, marginBottom: 4 },
   cardMeta:       { flexDirection: "row", gap: 6, marginTop: 4 },
   metaChip:       { backgroundColor: "#f3f4f6", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, fontSize: 11, color: "#6b7280", fontWeight: "500" },
-  metaChipAdmin:  { backgroundColor: "#dcfce7", color: "#16a34a" },
+  metaChipAdmin:   { backgroundColor: "#dcfce7", color: "#16a34a" },
+  metaChipSacco:   { backgroundColor: "#ede9fe", color: "#7c3aed" },
+  metaChipPending: { backgroundColor: "#fef3c7", color: "#92400e", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, fontSize: 11, fontWeight: "500" },
+  typeBtn:         { flex: 1, borderWidth: 1.5, borderColor: "#d1d5db", borderRadius: 10, padding: 10, alignItems: "center" },
+  typeBtnActive:   { borderColor: "#16a34a", backgroundColor: "#16a34a" },
+  typeBtnLabel:    { fontWeight: "700", fontSize: 13, color: "#111827" },
+  typeBtnLabelActive: { color: "#fff" },
+  typeBtnSub:      { fontSize: 10, color: "#6b7280", marginTop: 2, textAlign: "center" },
   overlay:        { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal:          { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
   modalTitle:     { fontSize: 18, fontWeight: "700", color: "#111827", marginBottom: 20 },

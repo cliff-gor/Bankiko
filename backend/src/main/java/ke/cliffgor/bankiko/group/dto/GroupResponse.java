@@ -15,6 +15,7 @@ public class GroupResponse {
     private BigDecimal monthlyContributionTarget;
     private int contributionDueDay;
     private Long fineractGroupAccountId;
+    private String groupType;
     private String status;
     private int memberCount;
     private String role;

@@ -8,6 +8,7 @@ import ke.cliffgor.bankiko.group.model.GroupMember;
 import ke.cliffgor.bankiko.group.model.SaccoGroup;
 import ke.cliffgor.bankiko.group.repository.GroupMemberRepository;
 import ke.cliffgor.bankiko.group.repository.SaccoGroupRepository;
+import ke.cliffgor.bankiko.group.service.GroupService;
 import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.loan.model.Loan;
 import ke.cliffgor.bankiko.loan.repository.LoanRepository;
@@ -39,6 +40,7 @@ public class AdminController {
     private final MemberRepository memberRepository;
     private final LoanRepository loanRepository;
     private final MpesaTransactionRepository transactionRepository;
+    private final GroupService groupService;
 
     @GetMapping("/users")
     public ResponseEntity<Page<UserSummary>> listUsers(
@@ -83,8 +85,29 @@ public class AdminController {
     public ResponseEntity<java.util.List<GroupSummary>> listGroups() {
         return ResponseEntity.ok(groupRepository.findAll(Sort.by("createdAt").descending()).stream()
             .map(g -> new GroupSummary(g.getId(), g.getName(), g.getDescription(),
-                g.getMonthlyContributionTarget(), g.getStatus().name(), g.getMembers().size()))
+                g.getMonthlyContributionTarget(), g.getGroupType().name(), g.getStatus().name(), g.getMembers().size()))
             .toList());
+    }
+
+    @GetMapping("/groups/pending")
+    public ResponseEntity<java.util.List<GroupSummary>> listPendingGroups() {
+        return ResponseEntity.ok(groupService.listPendingGroups().stream()
+            .map(g -> new GroupSummary(UUID.fromString(g.getId()), g.getName(), g.getDescription(),
+                g.getMonthlyContributionTarget(), g.getGroupType(), g.getStatus(), g.getMemberCount()))
+            .toList());
+    }
+
+
+    @PostMapping("/groups/{groupId}/approve")
+    public ResponseEntity<Void> approveGroup(@PathVariable UUID groupId) {
+        groupService.approveGroup(groupId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/groups/{groupId}/reject")
+    public ResponseEntity<Void> rejectGroup(@PathVariable UUID groupId, @RequestParam(required = false) String reason) {
+        groupService.rejectGroup(groupId, reason);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/transactions")
@@ -125,7 +148,7 @@ public class AdminController {
 
     public record GroupSummary(UUID id, String name, String description,
                                java.math.BigDecimal monthlyContributionTarget,
-                               String status, int memberCount) {}
+                               String groupType, String status, int memberCount) {}
     public record LoanSummary(UUID id, UUID userId, String memberName, String groupName,
                               java.math.BigDecimal principal, int repaymentMonths,
                               String status, String purpose,
