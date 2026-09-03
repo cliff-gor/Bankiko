@@ -16,6 +16,7 @@ public class BankikoProperties {
     private final Jwt jwt = new Jwt();
     private final Mpesa mpesa = new Mpesa();
     private final AfricaTalking africaTalking = new AfricaTalking();
+    private final Fcm fcm = new Fcm();
 
     @Data
     public static class Fineract {
@@ -61,5 +62,13 @@ public class BankikoProperties {
         private String apiKey;
         private String username = "sandbox";
         private String senderId = "BANKIKO";
+    }
+
+    @Data
+    public static class Fcm {
+        // Path to Firebase service account JSON file, OR base64-encoded JSON content
+        private String serviceAccountJson;
+        // FCM project ID (from Firebase console)
+        private String projectId;
     }
 }

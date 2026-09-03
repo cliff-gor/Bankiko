@@ -20,4 +20,9 @@ public class GroupResponse {
     private int memberCount;
     private String role;
     private Instant createdAt;
+    private int minContributionsRequired;
+    private java.math.BigDecimal sharePrice;
+    private int minShares;
+    private int maxShares;
+    private int loanMultiplier;
 }

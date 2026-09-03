@@ -11,6 +11,7 @@ import ke.cliffgor.bankiko.member.service.MemberService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.service.B2CService;
 import ke.cliffgor.bankiko.mpesa.service.StkPushService;
+import ke.cliffgor.bankiko.notification.service.PushNotificationService;
 import ke.cliffgor.bankiko.notification.service.SmsService;
 import ke.cliffgor.bankiko.share.service.ShareService;
 import ke.cliffgor.bankiko.wallet.dto.WalletBalanceResponse;
@@ -35,6 +36,7 @@ public class WalletService {
     private final SmsService smsService;
     private final ContributionService contributionService;
     private final ShareService shareService;
+    private final PushNotificationService pushService;
 
     /**
      * Fetches the member's wallet balance from Fineract.
@@ -112,6 +114,7 @@ public class WalletService {
             }
             smsService.send(tx.getPhone(),
                 "Bankiko: KES " + tx.getAmount() + " deposited to your wallet. Receipt: " + tx.getMpesaReceiptNumber());
+            pushService.sendToUser(tx.getUser(), "Deposit Confirmed", "KES " + tx.getAmount() + " added to your wallet.");
             log.info("Wallet credited: userId={} amount={}", tx.getUser().getId(), tx.getAmount());
 
         } else if (tx.getType() == MpesaTransaction.TransactionType.CONTRIBUTION && tx.getGroupId() != null) {
@@ -121,6 +124,7 @@ public class WalletService {
             shareService.creditShares(tx);
             smsService.send(tx.getPhone(),
                 "Bankiko: Share purchase of KES " + tx.getAmount() + " confirmed. Receipt: " + tx.getMpesaReceiptNumber());
+            pushService.sendToUser(tx.getUser(), "Shares Purchased", "KES " + tx.getAmount() + " share purchase confirmed.");
         }
     }
 

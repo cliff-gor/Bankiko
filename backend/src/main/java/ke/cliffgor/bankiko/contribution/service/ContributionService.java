@@ -13,6 +13,7 @@ import ke.cliffgor.bankiko.member.model.Member;
 import ke.cliffgor.bankiko.member.service.MemberService;
 import ke.cliffgor.bankiko.mpesa.model.MpesaTransaction;
 import ke.cliffgor.bankiko.mpesa.service.StkPushService;
+import ke.cliffgor.bankiko.notification.service.PushNotificationService;
 import ke.cliffgor.bankiko.notification.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class ContributionService {
     private final StkPushService stkPushService;
     private final FineractClient fineractClient;
     private final SmsService smsService;
+    private final PushNotificationService pushService;
 
     /**
      * Initiates an M-Pesa STK push for a group contribution.
@@ -65,8 +67,16 @@ public class ContributionService {
     public void processGroupContribution(Member member, UUID groupId, BigDecimal amount, String receipt) {
         SaccoGroup group = groupService.requireGroup(groupId);
 
-        // Credit the group's pooled savings account in Fineract
-        fineractClient.deposit(group.getFineractGroupAccountId(), amount, receipt);
+        // Credit the group's pooled savings account in Fineract (skip if not provisioned yet)
+        if (group.getFineractGroupAccountId() != null) {
+            try {
+                fineractClient.deposit(group.getFineractGroupAccountId(), amount, receipt);
+            } catch (Exception e) {
+                log.warn("Fineract group deposit failed for group={}, tracking locally: {}", groupId, e.getMessage());
+            }
+        } else {
+            log.info("Group treasury not provisioned yet, contribution recorded locally: groupId={}", groupId);
+        }
 
         String currentMonth = YearMonth.now().toString();
         Contribution contribution = Contribution.builder()
@@ -80,6 +90,7 @@ public class ContributionService {
 
         smsService.send(member.getUser().getPhone(),
             "Bankiko: KES " + amount + " contribution recorded for " + group.getName() + ". Receipt: " + receipt);
+        pushService.sendToUser(member.getUser(), "Contribution Confirmed", "KES " + amount + " to " + group.getName() + " — " + currentMonth);
 
         log.info("Group contribution processed: memberId={} groupId={} amount={}", member.getId(), groupId, amount);
     }

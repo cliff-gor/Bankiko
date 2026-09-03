@@ -272,3 +272,16 @@ export const loanApi = {
 export const statementApi = {
   list: () => request<StatementEntry[]>("/api/wallet/statement"),
 };
+
+export const deviceTokenApi = {
+  register: (token: string, platform = "FCM") =>
+    request<void>("/api/device-tokens", {
+      method: "POST",
+      body: JSON.stringify({ token, platform }),
+    }),
+  unregister: (token: string) =>
+    request<void>("/api/device-tokens", {
+      method: "DELETE",
+      body: JSON.stringify({ token }),
+    }),
+};

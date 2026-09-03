@@ -62,7 +62,7 @@ public class GroupService {
             ? SaccoGroup.GroupStatus.PENDING_APPROVAL
             : SaccoGroup.GroupStatus.ACTIVE;
 
-        SaccoGroup group = SaccoGroup.builder()
+        SaccoGroup.SaccoGroupBuilder builder = SaccoGroup.builder()
             .name(request.getName())
             .description(request.getDescription())
             .monthlyContributionTarget(request.getMonthlyContributionTarget())
@@ -70,8 +70,17 @@ public class GroupService {
             .fineractGroupAccountId(fineractAccountId)
             .groupType(groupType)
             .status(initialStatus)
-            .createdBy(creator)
-            .build();
+            .createdBy(creator);
+
+        if (groupType == SaccoGroup.GroupType.SACCO) {
+            builder.minContributionsRequired(request.getMinContributionsRequired());
+            builder.minShares(request.getMinShares());
+            builder.maxShares(request.getMaxShares());
+            builder.loanMultiplier(request.getLoanMultiplier());
+            if (request.getSharePrice() != null) builder.sharePrice(request.getSharePrice());
+        }
+
+        SaccoGroup group = builder.build();
 
         groupRepository.save(group);
 
@@ -126,6 +135,22 @@ public class GroupService {
         if (group.getStatus() != SaccoGroup.GroupStatus.PENDING_APPROVAL) {
             throw new BankikoException("Group is not pending approval", HttpStatus.CONFLICT);
         }
+
+        // Provision group treasury in Fineract if it wasn't created at group-creation time
+        if (group.getFineractGroupAccountId() == null && group.getCreatedBy().getFineractClientId() != null) {
+            try {
+                FineractResponse savings = fineractClient.openSavingsAccount(
+                    group.getCreatedBy().getFineractClientId(),
+                    groupFundProductId,
+                    "group-pool-" + group.getId()
+                );
+                group.setFineractGroupAccountId(savings.getResourceId());
+                log.info("Group treasury provisioned at approval: groupId={} fineractAccountId={}", groupId, savings.getResourceId());
+            } catch (Exception e) {
+                log.warn("Could not provision Fineract group treasury on approval: {}", e.getMessage());
+            }
+        }
+
         group.setStatus(SaccoGroup.GroupStatus.ACTIVE);
         group.setApprovedAt(Instant.now());
         groupRepository.save(group);
@@ -189,6 +214,11 @@ public class GroupService {
             .role(role)
             .memberCount(g.getMembers().size())
             .createdAt(g.getCreatedAt())
+            .minContributionsRequired(g.getMinContributionsRequired())
+            .sharePrice(g.getSharePrice())
+            .minShares(g.getMinShares())
+            .maxShares(g.getMaxShares())
+            .loanMultiplier(g.getLoanMultiplier())
             .build();
     }
 }

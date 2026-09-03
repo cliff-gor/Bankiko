@@ -17,6 +17,7 @@ import ke.cliffgor.bankiko.contribution.model.Contribution;
 import ke.cliffgor.bankiko.contribution.repository.ContributionRepository;
 import ke.cliffgor.bankiko.loan.model.LoanRepayment;
 import ke.cliffgor.bankiko.loan.repository.LoanRepaymentRepository;
+import ke.cliffgor.bankiko.notification.service.PushNotificationService;
 import ke.cliffgor.bankiko.notification.service.SmsService;
 import ke.cliffgor.bankiko.share.repository.ShareHoldingRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class LoanService {
     private final ShareHoldingRepository shareHoldingRepository;
     private final ContributionRepository contributionRepository;
     private final LoanRepaymentRepository repaymentRepository;
+    private final PushNotificationService pushService;
 
     @Transactional(readOnly = true)
     public List<LoanResponse> listForUser(UUID userId) {
@@ -67,12 +69,13 @@ public class LoanService {
         SaccoGroup group = groupService.requireGroup(request.getGroupId());
         groupService.requireMembership(group, user.getId());
 
-        // SACCO groups require at least 3 months of contributions before borrowing
+        // SACCO groups require a minimum number of monthly contributions before borrowing
         if (group.getGroupType() == SaccoGroup.GroupType.SACCO) {
             long months = contributionRepository.countByMemberAndGroup(member, group);
-            if (months < 3) {
+            int required = group.getMinContributionsRequired();
+            if (months < required) {
                 throw new BankikoException(
-                    "You need at least 3 months of contributions to apply for a SACCO loan. You have " + months + ".",
+                    "You need at least " + required + " months of contributions to apply for a loan in this group. You have " + months + ".",
                     HttpStatus.BAD_REQUEST);
             }
         }
@@ -153,10 +156,9 @@ public class LoanService {
             .completedAt(Instant.now())
             .build());
 
-        try {
-            smsService.send(loan.getUser().getPhone(),
-                "Bankiko: Your loan of KES " + loan.getPrincipal() + " has been approved and disbursed.");
-        } catch (Exception ignored) {}
+        String loanMsg = "Bankiko: Your loan of KES " + loan.getPrincipal() + " has been approved and disbursed.";
+        try { smsService.send(loan.getUser().getPhone(), loanMsg); } catch (Exception ignored) {}
+        pushService.sendToUser(loan.getUser(), "Loan Approved 🎉", "KES " + loan.getPrincipal() + " disbursed from " + loan.getGroupName());
 
         log.info("Loan approved: loanId={} by adminId={}", loanId, adminUser.getId());
         return toResponse(loan);
@@ -169,6 +171,9 @@ public class LoanService {
 
         loan.setStatus("REJECTED");
         loan = loanRepository.save(loan);
+
+        try { smsService.send(loan.getUser().getPhone(), "Bankiko: Your loan application was not approved."); } catch (Exception ignored) {}
+        pushService.sendToUser(loan.getUser(), "Loan Update", "Your loan application was not approved.");
 
         log.info("Loan rejected: loanId={} by adminId={}", loanId, adminUser.getId());
         return toResponse(loan);

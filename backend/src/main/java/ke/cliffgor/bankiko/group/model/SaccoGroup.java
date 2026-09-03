@@ -54,6 +54,10 @@ public class SaccoGroup {
     @Builder.Default
     private int loanMultiplier = 3;
 
+    // Minimum months of contributions before a SACCO member can apply for a loan
+    @Builder.Default
+    private int minContributionsRequired = 3;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
